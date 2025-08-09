@@ -261,242 +261,252 @@ function svgToImage(svgElement, width = 300, height = 300) {
   });
 }
 
-function MarqueeRakhis({ onPick }) {
-  const items = useMemo(() => Array.from({ length: 10 }, (_, i) => i), []);
-  const trackRef = useRef(null);
+
+function RakhiCarousel({ onPick }) {
+  const items = useMemo(() => [1, 11, 12, 13, 14, 15, 16, 17], []);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Auto-rotation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % items.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [items.length]);
+
   return (
-    <div className="relative w-full overflow-hidden">
-      <div
-        ref={trackRef}
-        className="flex gap-8 py-6 animate-marquee will-change-transform"
-        style={{ animationDuration: "22s" }}
-      >
-        {items.concat(items).map((i, idx) => (
-          <button
-            key={idx}
-            className="shrink-0 rounded-2xl bg-white/70 shadow hover:shadow-lg border border-amber-100 p-3 backdrop-blur-xl transition-transform hover:-translate-y-1"
-            onClick={() => onPick(i)}
-            aria-label={`Select Rakhi ${i + 1}`}
-          >
-            <RakhiSVG seed={i} />
-          </button>
-        ))}
+    <div className="relative w-full py-8">
+      <div className="relative h-80 lg:h-96 flex items-center justify-center overflow-hidden">
+
+        {/* Carousel track */}
+        <div className="relative w-full flex items-center justify-center">
+          {items.map((rakhi, index) => {
+            const offset = index - currentIndex;
+            const isCenter = offset === 0;
+            const distance = Math.abs(offset);
+
+            // Smooth looping
+            let translateX = offset * 220; // space between items
+            if (offset < -Math.floor(items.length / 2)) {
+              translateX += items.length * 220;
+            }
+            if (offset > Math.floor(items.length / 2)) {
+              translateX -= items.length * 220;
+            }
+
+            return (
+              <div
+                key={rakhi}
+                className="absolute transition-all duration-700 ease-in-out"
+                style={{
+                  transform: `translateX(${translateX}px) scale(${isCenter ? 1 : 0.85})`,
+                  opacity: distance > 2 ? 0 : isCenter ? 1 : 0.6,
+                  filter: isCenter ? 'none' : 'blur(1px)',
+                  zIndex: isCenter ? 20 : 10,
+                }}
+              >
+                <button
+                  onClick={() => {
+                    if (isCenter) {
+                      onPick(rakhi);
+                    } else {
+                      setCurrentIndex(index);
+                    }
+                  }}
+                  className={`relative bg-white/90 rounded-3xl shadow-xl border-2 backdrop-blur-xl transition-all duration-300 ${
+                    isCenter
+                      ? 'border-amber-300 p-8 lg:p-12 hover:shadow-2xl hover:-translate-y-2'
+                      : 'border-amber-200 p-4 lg:p-6 hover:scale-90'
+                  }`}
+                >
+                  {isCenter && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-200/30 via-orange-200/40 to-amber-200/30 rounded-3xl blur-xl -z-10"></div>
+                  )}
+
+                  <img
+                    src={`/rakhi${rakhi}.png`}
+                    alt={`Rakhi ${rakhi}`}
+                    className={`object-contain transition-transform duration-500 ease-in-out ${
+                      isCenter
+                        ? 'w-48 h-48 lg:w-64 lg:h-64'
+                        : 'w-32 h-32 lg:w-40 lg:h-40'
+                    }`}
+                  />
+
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(-0%); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee { animation: marquee linear infinite; }
-      `}</style>
     </div>
   );
 }
 
+
+// function RakhiCarousel({ onPick }) {
+//   const items = useMemo(() => [1, 11, 12, 13, 14, 15, 16, 17], []);
+//   const [currentIndex, setCurrentIndex] = useState(0);
+
+//   // Auto-rotation
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       setCurrentIndex(prev => (prev + 1) % items.length);
+//     }, 3000);
+//     return () => clearInterval(interval);
+//   }, [items.length]);
+
+//   return (
+//     <div className="relative w-full py-8">
+//       <div className="relative h-80 lg:h-96 flex items-center justify-center overflow-hidden">
+
+//         {/* Show all items in a horizontal line */}
+//         <div className="flex items-center gap-8 lg:gap-12">
+//           {items.map((rakhi, index) => {
+//             const isCenter = index === currentIndex;
+//             const distance = Math.abs(index - currentIndex);
+//             const isVisible = distance <= 2;
+
+//             if (!isVisible) return null;
+
+//             return (
+//               <div
+//                 key={rakhi}
+//                 className="absolute"
+//                 style={{
+//                   transform: `translateX(${(index - currentIndex) * 180}px) scale(${isCenter ? 1 : 0.8})`,
+//                   opacity: isCenter ? 1 : 0.6,
+//                   filter: isCenter ? 'none' : 'blur(1px)',
+//                   zIndex: isCenter ? 20 : 10,
+//                   transition: 'all 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+//                   left: '50%',
+//                   top: '50%',
+//                   marginLeft: '-100px',
+//                   marginTop: '-120px'
+//                 }}
+//               >
+//                 <button
+//                   onClick={() => {
+//                     if (isCenter) {
+//                       onPick(rakhi);
+//                     } else {
+//                       setCurrentIndex(index);
+//                     }
+//                   }}
+//                   className={`relative bg-white/90 rounded-3xl shadow-xl border-2 backdrop-blur-xl transition-all duration-300 group ${
+//                     isCenter
+//                       ? 'border-amber-300 p-8 lg:p-12 hover:shadow-2xl hover:-translate-y-2'
+//                       : 'border-amber-200 p-4 lg:p-6 hover:scale-90'
+//                   }`}
+//                 >
+//                   {/* Background glow for center item */}
+//                   {isCenter && (
+//                     <div className="absolute inset-0 bg-gradient-to-r from-amber-200/30 via-orange-200/40 to-amber-200/30 rounded-3xl blur-xl -z-10"></div>
+//                   )}
+
+//                   <img
+//                     src={`/rakhi${rakhi}.png`}
+//                     alt={`Rakhi ${rakhi}`}
+//                     className={`object-contain group-hover:scale-105 transition-transform duration-300 ${
+//                       isCenter
+//                         ? 'w-48 h-48 lg:w-64 lg:h-64'
+//                         : 'w-32 h-32 lg:w-40 lg:h-40'
+//                     }`}
+//                     onError={(e) => {
+//                       console.log(`Failed to load: /rakhi${rakhi}.png`);
+//                       e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg==';
+//                     }}
+//                   />
+
+//                   {/* Rakhi number indicator */}
+//                   {isCenter && (
+//                     <div className="absolute top-4 right-4 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm font-medium">
+//                       {rakhi}
+//                     </div>
+//                   )}
+//                 </button>
+//               </div>
+//             );
+//           })}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
 function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
-  const [phase, setPhase] = useState(0); // 0: waiting, 1: rakhi appears, 2: box opens, 3: rakhi drops, 4: lid starts moving, 5: lid halfway, 6: box closes
+  const [phase, setPhase] = useState(0); // 0: waiting, 1: rakhi appears, 2: rakhi drops + box closes instantly, 3: show final box
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(1), 1000);   // rakhi appears
-    const t2 = setTimeout(() => setPhase(2), 2500);   // rakhi starts dropping
-    const t3 = setTimeout(() => setPhase(3), 4000);   // rakhi halfway down - lid starts closing
-    const t4 = setTimeout(() => setPhase(4), 4100);   // lid closes immediately
-    const t5 = setTimeout(() => onDone && onDone(), 4600); // complete
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); };
+    const t2 = setTimeout(() => setPhase(2), 2500);   // rakhi drops + box closes instantly
+    const t3 = setTimeout(() => setPhase(3), 3000);   // show final box.png
+    const t4 = setTimeout(() => onDone && onDone(), 3500); // complete
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, [onDone]);
 
-  // Always use beautiful CSS box animation
+  // Simple animation - rakhi drops inside box, then show final box.png
   return (
-      <div className="relative mt-16 h-80">
-        {/* Rakhi floating and dropping completely inside the box */}
-        <div className={`absolute left-1/2 -translate-x-1/2 transition-all ease-in-out ${
-          phase === 0 ? "top-8 scale-100 opacity-0 duration-0" :
-          phase === 1 ? "top-8 scale-100 opacity-100 duration-1000" :
-          phase >= 2 ? "top-36 scale-40 opacity-0 duration-3000" : ""
-        }`} style={{ zIndex: phase >= 3 ? 1 : 10 }}>
-          <div className={phase === 1 ? "animate-pulse" : ""}>
-            <div data-rakhi-seed={rakhiSeed}>
-              <RakhiSVG seed={rakhiSeed} size={100} />
-            </div>
+      <div className="relative flex items-center justify-center h-[85vh] min-h-[700px]">
+
+        {/* Phase 3: Show final closed box.png - CENTER */}
+        {phase === 3 ? (
+          <div className="flex items-center justify-center">
+            <img
+              src="/box.png"
+              alt="Final Closed Box"
+              className="w-[500px] h-80 object-contain"
+            />
           </div>
-        </div>
-
-        {/* Professional Lottie-style Gift Box */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
-          <div className="relative" style={{ perspective: '1000px' }}>
-
-            {/* Box Base - 3D effect */}
-            <div className={`relative w-40 h-32 transition-all duration-500 ${
-              phase >= 2 && phase < 4 ? "transform translate-y-1" : ""
-            }`} style={{ transformStyle: 'preserve-3d' }}>
-
-              {/* Main box body */}
-              <div className="w-full h-full bg-gradient-to-br from-red-400 via-red-500 to-red-700 rounded-lg shadow-2xl relative overflow-hidden">
-                {/* Box front face highlight */}
-                <div className="absolute top-2 left-2 w-8 h-6 bg-white/20 rounded-lg blur-sm"></div>
-                {/* Box side shadow */}
-                <div className="absolute bottom-2 right-1 w-full h-4 bg-black/30 rounded-lg blur-md"></div>
-                {/* Box texture */}
-                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-black/20 rounded-lg"></div>
-              </div>
-
-              {/* Box Lid - simple top-down animation */}
-              <div className={`absolute w-full h-10 bg-gradient-to-br from-red-300 via-red-400 to-red-600 rounded-lg shadow-xl transition-all duration-500 ease-out`}
-                style={{
-                  transformOrigin: 'center',
-                  transformStyle: 'preserve-3d',
-                  left: '0px',
-                  top: phase < 4 ? '-200px' : '-12px',
-                  transform: phase < 4 ? 'rotate(-5deg)' : 'rotate(0deg)',
-                  zIndex: 50
-                }}>
-                {/* Lid highlight */}
-                <div className="absolute top-1 left-3 w-10 h-3 bg-white/30 rounded-full blur-sm"></div>
-                {/* Lid edge */}
-                <div className="absolute bottom-0 left-0 w-full h-1 bg-red-800/50 rounded-b-lg"></div>
+        ) : (
+          <>
+            {/* Rakhi floating and dropping INSIDE the box - ULTRA BIG */}
+            <div className={`absolute left-1/2 -translate-x-1/2 transition-all ease-in-out ${
+              phase === 0 ? "bottom-60 scale-100 opacity-0 duration-0" :
+              phase === 1 ? "bottom-60 scale-100 opacity-100 duration-1000" :
+              phase >= 2 ? "bottom-48 scale-60 opacity-0 duration-500" : ""
+            }`} style={{ zIndex: 15 }}>
+              <div className={phase === 1 ? "animate-pulse" : ""}>
+                <img
+                  src={`/rakhi${rakhiSeed}.png`}
+                  alt={`Rakhi ${rakhiSeed}`}
+                  className="w-40 h-40 object-contain"
+                />
               </div>
             </div>
 
-            {/* Vertical Ribbon */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-full bg-gradient-to-b from-yellow-300 via-yellow-400 to-yellow-600 shadow-lg z-10">
-              {/* Ribbon shine */}
-              <div className="absolute top-2 left-1 w-2 h-full bg-yellow-200/60 rounded-full"></div>
-              {/* Ribbon shadow */}
-              <div className="absolute top-2 right-1 w-1 h-full bg-yellow-800/40 rounded-full"></div>
+            {/* Box Animation - ULTRA MAXIMUM SIZE - CENTER */}
+            <div className="flex items-center justify-center">
+              <div className="relative w-[500px] h-96">
+
+                {/* Box Bottom - Always visible */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
+                  <img
+                    src="/box_bottom.png"
+                    alt="Box Bottom"
+                    className="w-[500px] h-80 object-contain"
+                  />
+                </div>
+
+                {/* Box Top - Instantly closes when rakhi drops */}
+                <div
+                  className={`absolute left-1/2 -translate-x-1/2 transition-all duration-200 ease-out`}
+                  style={{
+                    bottom: phase >= 2 ? '40px' : '280px',
+                    transform: `translateX(-50%)`,
+                    zIndex: 30
+                  }}
+                >
+                  <img
+                    src="/box_top.png"
+                    alt="Box Top"
+                    className="w-[500px] h-80 object-contain"
+                  />
+                </div>
+
+              </div>
             </div>
-
-            {/* Horizontal Ribbon */}
-            <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-8 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 shadow-lg z-10">
-              {/* Ribbon shine */}
-              <div className="absolute top-1 left-2 w-full h-2 bg-yellow-200/60 rounded-full"></div>
-              {/* Ribbon shadow */}
-              <div className="absolute bottom-1 left-2 w-full h-1 bg-yellow-800/40 rounded-full"></div>
-            </div>
-
-            {/* Ribbon Bow - 3D effect */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-8 z-20">
-              {/* Left bow wing */}
-              <div className="absolute left-0 top-2 w-4 h-5 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 rounded-full transform -rotate-12 shadow-lg">
-                <div className="absolute top-1 left-1 w-2 h-2 bg-yellow-200/50 rounded-full"></div>
-              </div>
-              {/* Right bow wing */}
-              <div className="absolute right-0 top-2 w-4 h-5 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 rounded-full transform rotate-12 shadow-lg">
-                <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-200/50 rounded-full"></div>
-              </div>
-              {/* Bow center knot */}
-              <div className="absolute left-1/2 -translate-x-1/2 top-3 w-3 h-4 bg-gradient-to-b from-yellow-400 via-yellow-500 to-yellow-700 rounded-sm shadow-md">
-                <div className="absolute top-1 left-0.5 w-1 h-2 bg-yellow-200/40 rounded-full"></div>
-              </div>
-              {/* Bow shadow */}
-              <div className="absolute left-1/2 -translate-x-1/2 top-6 w-8 h-2 bg-black/20 rounded-full blur-sm"></div>
-            </div>
-
-            {/* Box shadow on ground */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-44 h-6 bg-black/30 rounded-full blur-lg"></div>
-          </div>
-        </div>
-
-        {/* Sparkles when closing */}
-        {phase === 4 && (
-          <div className="absolute inset-0 pointer-events-none">
-            {[...Array(10)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-1 rounded-full bg-yellow-400 animate-sparkle"
-                style={{
-                  top: `${30 + Math.random() * 40}%`,
-                  left: `${30 + Math.random() * 40}%`,
-                  animationDelay: `${Math.random() * 0.8}s`
-                }}
-              />
-            ))}
-            <style>{`
-              @keyframes sparkle {
-                0% { transform: scale(0); opacity: 0; }
-                50% { transform: scale(1); opacity: 1; }
-                100% { transform: scale(0); opacity: 0; }
-              }
-              .animate-sparkle { animation: sparkle 1000ms ease-out forwards; }
-            `}</style>
-          </div>
-        )}
-
-        {/* Full Page Confetti after box closes */}
-        {phase >= 4 && (
-          <div className="fixed inset-0 pointer-events-none z-50">
-            {/* Bouncing confetti all over screen */}
-            {[...Array(100)].map((_, i) => (
-              <div
-                key={i}
-                className={`absolute w-3 h-3 rounded-full animate-bounce ${
-                  i % 8 === 0 ? 'bg-yellow-400' :
-                  i % 8 === 1 ? 'bg-pink-400' :
-                  i % 8 === 2 ? 'bg-red-400' :
-                  i % 8 === 3 ? 'bg-blue-400' :
-                  i % 8 === 4 ? 'bg-green-400' :
-                  i % 8 === 5 ? 'bg-purple-400' :
-                  i % 8 === 6 ? 'bg-orange-400' :
-                  'bg-indigo-400'
-                }`}
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 3}s`,
-                  animationDuration: `${0.8 + Math.random() * 1.5}s`
-                }}
-              />
-            ))}
-
-            {/* Falling confetti from top */}
-            {[...Array(80)].map((_, i) => (
-              <div
-                key={`fall-${i}`}
-                className={`absolute w-4 h-2 ${
-                  i % 6 === 0 ? 'bg-yellow-500' :
-                  i % 6 === 1 ? 'bg-pink-500' :
-                  i % 6 === 2 ? 'bg-red-500' :
-                  i % 6 === 3 ? 'bg-blue-500' :
-                  i % 6 === 4 ? 'bg-green-500' :
-                  'bg-purple-500'
-                }`}
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: '-20px',
-                  animation: `fall ${2 + Math.random() * 4}s linear infinite`,
-                  animationDelay: `${Math.random() * 3}s`
-                }}
-              />
-            ))}
-
-            {/* Floating hearts and stars */}
-            {[...Array(20)].map((_, i) => (
-              <div
-                key={`emoji-${i}`}
-                className="absolute text-2xl animate-float-up"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${80 + Math.random() * 20}%`,
-                  animationDelay: `${Math.random() * 2}s`,
-                  animationDuration: `${3 + Math.random() * 2}s`
-                }}
-              >
-                {i % 4 === 0 ? '❤️' : i % 4 === 1 ? '🎉' : i % 4 === 2 ? '✨' : '🎊'}
-              </div>
-            ))}
-
-            {/* CSS for animations */}
-            <style>{`
-              @keyframes fall {
-                0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-                100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-              }
-              @keyframes float-up {
-                0% { transform: translateY(0px); opacity: 1; }
-                100% { transform: translateY(-200px); opacity: 0; }
-              }
-              .animate-float-up { animation: float-up linear infinite; }
-            `}</style>
-          </div>
+          </>
         )}
       </div>
     );
@@ -513,24 +523,24 @@ function Landing({ onPick }) {
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-red-900 -mt-2" style={{fontFamily: 'serif'}}>Raksha</h1>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-900 -mt-1 tracking-wide">BANDHAN</h1>
         </div>
-        <p className="text-center text-base text-red-700/80 mb-8 px-4">Celebrate Raksha Bandhan with a playful digital rakhi & heartfelt wishes.</p>
+
         <div className="max-w-none mx-auto px-4">
           {/* Mobile: Stack vertically, Desktop: Side by side */}
           <div className="flex flex-col lg:flex-row lg:items-stretch lg:justify-center gap-6 lg:gap-12">
             {/* First Card */}
             <button onClick={() => onPick("sister")}
-              className="group rounded-2xl bg-white border border-orange-200 p-6 lg:p-20 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 w-full lg:flex-1 lg:min-w-[500px] min-h-[180px] lg:min-h-[350px]">
+              className="group rounded-2xl bg-white border border-orange-200 p-6 lg:p-12 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 w-full lg:flex-1 lg:min-w-[500px] min-h-[180px] lg:min-h-[300px]">
               <div className="flex items-center justify-between h-full">
                 {/* Text Content - LEFT SIDE */}
                 <div className="flex-1">
-                  <div className="text-xl lg:text-2xl font-semibold text-gray-800 mb-4 lg:mb-6">Send Digital Rakhi</div>
-                  <button className="px-4 py-2 lg:px-6 lg:py-3 bg-orange-200 text-red-800 rounded-lg text-sm lg:text-base font-medium hover:bg-orange-300 transition-colors">
+                  <div className="text-xl lg:text-4xl font-semibold text-gray-800 mb-4 lg:mb-6">Send Digital Rakhi</div>
+                  <button className="px-4 py-2 lg:px-6 lg:py-3 bg-orange-200 text-red-800 rounded-lg text-sm lg:text-lg font-medium hover:bg-orange-300 transition-colors">
                     Extort Money →
                   </button>
                 </div>
                 {/* Character Image - RIGHT SIDE */}
                 <div className="flex-shrink-0 ml-4 lg:ml-8">
-                  <img src="/bhen.png" alt="Sister" className="w-20 h-20 sm:w-24 sm:h-24 lg:w-36 lg:h-36 object-contain" />
+                  <img src="/bhen.png" alt="Sister" className="w-20 h-20 sm:w-24 sm:h-24 lg:w-52 lg:h-52 object-contain" />
                 </div>
               </div>
             </button>
@@ -551,19 +561,19 @@ function Landing({ onPick }) {
 
             {/* Second Card */}
             <button onClick={() => onPick("brother")}
-              className="group rounded-2xl bg-white border border-orange-200 p-6 lg:p-20 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 w-full lg:flex-1 lg:min-w-[500px] min-h-[180px] lg:min-h-[350px]">
+              className="group rounded-2xl bg-white border border-orange-200 p-6 lg:p-12 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 w-full lg:flex-1 lg:min-w-[500px] min-h-[180px] lg:min-h-[300px]">
               <div className="flex items-center justify-between h-full">
                 {/* Text Content - LEFT SIDE */}
                 <div className="flex-1">
-                  <div className="text-xl lg:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">Send Your</div>
-                  <div className="text-xl lg:text-2xl font-semibold text-gray-800 mb-4 lg:mb-6">sister a Gift</div>
-                  <button className="px-4 py-2 lg:px-6 lg:py-3 bg-orange-200 text-red-800 rounded-lg text-sm lg:text-base font-medium hover:bg-orange-300 transition-colors">
+                  <div className="text-xl lg:text-4xl font-semibold text-gray-800 mb-1 lg:mb-2">Send Your</div>
+                  <div className="text-xl lg:text-4xl font-semibold text-gray-800 mb-4 lg:mb-6">sister a Gift</div>
+                  <button className="px-4 py-2 lg:px-6 lg:py-3 bg-orange-200 text-red-800 rounded-lg text-sm lg:text-lg font-medium hover:bg-orange-300 transition-colors">
                     Send Gift →
                   </button>
                 </div>
                 {/* Character Image - RIGHT SIDE */}
                 <div className="flex-shrink-0 ml-4 lg:ml-8">
-                  <img src="/bhai.png" alt="Brother" className="w-20 h-20 sm:w-24 sm:h-24 lg:w-36 lg:h-36 object-contain" />
+                  <img src="/bhai.png" alt="Brother" className="w-20 h-20 sm:w-24 sm:h-24 lg:w-52 lg:h-52 object-contain" />
                 </div>
               </div>
             </button>
@@ -599,18 +609,18 @@ function SisterFlow() {
 
   async function downloadRakhiImage() {
     try {
-      // Try to use custom rakhi image first
-      const customRakhiUrl = '/rakhi1.png';
+      // Use the selected rakhi image
+      const selectedRakhiUrl = `/rakhi${picked}.png`;
 
-      // Check if custom image exists, otherwise fall back to generated SVG
-      const response = await fetch(customRakhiUrl);
+      // Check if selected rakhi image exists, otherwise fall back to generated SVG
+      const response = await fetch(selectedRakhiUrl);
       if (response.ok) {
-        // Download custom rakhi image
+        // Download selected rakhi image
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `beautiful-rakhi.png`;
+        a.download = `selected-rakhi-${picked}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -618,7 +628,7 @@ function SisterFlow() {
         return;
       }
     } catch (error) {
-      console.log('Custom rakhi image not available, using generated SVG');
+      console.log('Selected rakhi image not available, using generated SVG');
     }
 
     // Fallback to generated SVG
@@ -696,14 +706,23 @@ function SisterFlow() {
   }
 
   return (
-    <section className="min-h-screen px-3 sm:px-4 pt-8 pb-24">
+    <section className="min-h-screen px-3 sm:px-4 pt-8 pb-24 relative">
+      {/* Back button at top */}
+      <button
+        onClick={() => window.history.back()}
+        className="absolute top-4 left-4 z-50 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg border border-amber-200 transition-all duration-300 hover:scale-105"
+      >
+        <svg className="w-6 h-6 text-amber-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
       <div className="max-w-3xl mx-auto">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center px-2">Choose a Rakhi for Bhai ❤️</h2>
 
         {!picked && (
           <div className="mt-6">
-            <MarqueeRakhis onPick={setPicked} />
-            <p className="mt-4 text-center text-sm sm:text-base text-amber-800/80 px-4">Tap a rakhi to preview & pack</p>
+            <RakhiCarousel onPick={setPicked} />
           </div>
         )}
 
@@ -722,9 +741,11 @@ function SisterFlow() {
             <div className="text-center">
               <div className="inline-block rounded-2xl bg-white border border-orange-200 shadow-lg p-4">
                 <p className="text-sm text-red-900/80 mb-3">Your Selected Rakhi</p>
-                <div data-rakhi-seed={picked}>
-                  <RakhiSVG seed={picked} size={120} />
-                </div>
+                <img
+                  src={`/rakhi${picked}.png`}
+                  alt={`Selected Rakhi ${picked}`}
+                  className="w-32 h-32 object-contain mx-auto"
+                />
               </div>
             </div>
             <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
@@ -807,6 +828,17 @@ function SisterFlow() {
           </div>
         )}
       </div>
+
+      {/* Box bottom image at the bottom - MOBILE BIGGER - Only show during rakhi selection */}
+      {!picked && (
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <img
+            src="/box_bottom.png"
+            alt="Box Bottom"
+            className="w-[95vw] max-w-[600px] h-[30vh] sm:w-[500px] sm:h-48 object-contain opacity-90"
+          />
+        </div>
+      )}
     </section>
   );
 }
@@ -891,24 +923,39 @@ function BrotherReceivedView({ params }) {
   }, []);
 
   return (
-    <section className="min-h-screen px-4 pt-8 pb-24">
+    <section className="min-h-screen px-4 pt-8 pb-24 relative">
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-3xl md:text-4xl font-bold text-amber-900">Your Digital Rakhi 🎁</h2>
         <p className="text-amber-800/80 mt-2">A rakhi sent with love — open your surprise</p>
 
-        {/* Box reveal */}
-        <div className="relative mt-8 h-64">
-          {/* closed box */}
-          <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-56 h-40`}>
-            <div className="relative w-full h-full">
-              <div className="absolute inset-x-0 bottom-0 h-24 bg-amber-200 rounded-b-2xl shadow-lg border border-amber-300" />
-              <div className={`absolute inset-x-0 bottom-24 h-10 bg-amber-300 rounded-t-2xl shadow transition-transform duration-700 origin-bottom ${reveal>=1?"translate-y-24":""}`} />
-            </div>
+        {/* Box reveal with actual images */}
+        <div className="relative mt-8 h-80 flex items-center justify-center">
+          {/* Box bottom - always visible */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
+            <img
+              src="/box_bottom.png"
+              alt="Box Bottom"
+              className="w-64 h-32 object-contain"
+            />
           </div>
-          {/* rakhi rises */}
+
+          {/* Box top - slides up when revealed */}
+          <div className={`absolute bottom-16 left-1/2 -translate-x-1/2 transition-transform duration-700 ${reveal>=1?"translate-y-20":""}`}>
+            <img
+              src="/box_top.png"
+              alt="Box Top"
+              className="w-64 h-32 object-contain"
+            />
+          </div>
+
+          {/* Selected rakhi rises */}
           {reveal>=2 && (
             <div className="absolute left-1/2 -translate-x-1/2 top-10 animate-pulse">
-              <RakhiSVG seed={rakhiSeed} size={120} />
+              <img
+                src={`/rakhi${rakhiSeed}.png`}
+                alt={`Selected Rakhi ${rakhiSeed}`}
+                className="w-32 h-32 object-contain"
+              />
             </div>
           )}
         </div>
