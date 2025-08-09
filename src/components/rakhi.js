@@ -435,22 +435,23 @@ function RakhiCarousel({ onPick }) {
 // }
 
 function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
-  const [phase, setPhase] = useState(0); // 0: waiting, 1: rakhi appears, 2: rakhi drops + box closes instantly, 3: show final box
+  const [phase, setPhase] = useState(0); // 0: waiting, 1: rakhi appears top, 2: rakhi drops slowly, 3: rakhi hides, 4: show final box
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 1000);   // rakhi appears
-    const t2 = setTimeout(() => setPhase(2), 2500);   // rakhi drops + box closes instantly
-    const t3 = setTimeout(() => setPhase(3), 3000);   // show final box.png
-    const t4 = setTimeout(() => onDone && onDone(), 3500); // complete
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    const t1 = setTimeout(() => setPhase(1), 1000);   // rakhi appears at top
+    const t2 = setTimeout(() => setPhase(2), 2000);   // rakhi starts dropping slowly
+    const t3 = setTimeout(() => setPhase(3), 4500);   // rakhi hides when dhakkan reaches center
+    const t4 = setTimeout(() => setPhase(4), 5000);   // show final box.png
+    const t5 = setTimeout(() => onDone && onDone(), 7000); // complete after 2 seconds of box display
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); };
   }, [onDone]);
 
-  // Simple animation - rakhi drops inside box, then show final box.png
+  // Simple animation - rakhi hides when dhakkan reaches center, then show final box.png
   return (
       <div className="relative flex items-center justify-center h-[85vh] min-h-[700px]">
 
-        {/* Phase 3: Show final closed box.png - CENTER */}
-        {phase === 3 ? (
+        {/* Phase 4: Show final closed box.png - CENTER */}
+        {phase === 4 ? (
           <div className="flex items-center justify-center">
             <img
               src="/box.png"
@@ -460,24 +461,32 @@ function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
           </div>
         ) : (
           <>
-            {/* Rakhi floating and dropping INSIDE the box - ULTRA BIG */}
-            <div className={`absolute left-1/2 -translate-x-1/2 transition-all ease-in-out ${
-              phase === 0 ? "bottom-60 scale-100 opacity-0 duration-0" :
-              phase === 1 ? "bottom-60 scale-100 opacity-100 duration-1000" :
-              phase >= 2 ? "bottom-48 scale-60 opacity-0 duration-500" : ""
-            }`} style={{ zIndex: 15 }}>
-              <div className={phase === 1 ? "animate-pulse" : ""}>
-                <img
-                  src={`/rakhi${rakhiSeed}.png`}
-                  alt={`Rakhi ${rakhiSeed}`}
-                  className="w-40 h-40 object-contain"
-                />
+            {/* Rakhi - smooth top to bottom animation - STOPS EARLIER */}
+            {phase < 3 && (
+              <div className={`absolute left-1/2 -translate-x-1/2 transition-all ease-in-out ${
+                phase === 0 ? "opacity-0 duration-0" :
+                phase === 1 ? "opacity-100 duration-1000" :
+                phase === 2 ? "opacity-100 duration-2500" : ""
+              }`} style={{
+                zIndex: 15,
+                top: phase === 0 ? '10%' :
+                     phase === 1 ? '15%' :
+                     phase === 2 ? '45%' : '45%',
+                transform: `translateX(-50%) scale(${phase >= 2 ? '0.7' : '1'})`
+              }}>
+                <div className={phase === 1 ? "animate-pulse" : ""}>
+                  <img
+                    src={`/rakhi${rakhiSeed}.png`}
+                    alt={`Rakhi ${rakhiSeed}`}
+                    className="w-40 h-40 object-contain"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Box Animation - ULTRA MAXIMUM SIZE - CENTER */}
+            {/* Box Animation - dhakkan closes to center then show final box */}
             <div className="flex items-center justify-center">
-              <div className="relative w-[500px] h-96">
+              <div className="relative w-[500px] h-[450px]">
 
                 {/* Box Bottom - Always visible */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
@@ -488,11 +497,11 @@ function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
                   />
                 </div>
 
-                {/* Box Top - Instantly closes when rakhi drops */}
+                {/* Box Top - closes to center (200px) then final box shows */}
                 <div
-                  className={`absolute left-1/2 -translate-x-1/2 transition-all duration-200 ease-out`}
+                  className={`absolute left-1/2 -translate-x-1/2 transition-all ease-in-out duration-1000`}
                   style={{
-                    bottom: phase >= 2 ? '40px' : '280px',
+                    bottom: phase >= 3 ? '200px' : '350px',
                     transform: `translateX(-50%)`,
                     zIndex: 30
                   }}
@@ -736,18 +745,27 @@ function SisterFlow() {
         )}
 
         {packed && (
-          <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6">
-            {/* Display selected rakhi for download */}
-            <div className="text-center">
-              <div className="inline-block rounded-2xl bg-white border border-orange-200 shadow-lg p-4">
-                <p className="text-sm text-red-900/80 mb-3">Your Selected Rakhi</p>
-                <img
-                  src={`/rakhi${picked}.png`}
-                  alt={`Selected Rakhi ${picked}`}
-                  className="w-32 h-32 object-contain mx-auto"
-                />
+          <div className="mt-8 sm:mt-10">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <h2 className="text-lg text-gray-600 mb-4">Provide details for whom to send</h2>
+
+              {/* Gift Box Icon */}
+              <div className="flex justify-center mb-6">
+                <div className="w-24 h-24 bg-gradient-to-br from-orange-200 to-amber-300 rounded-2xl border-4 border-blue-400 flex items-center justify-center shadow-lg">
+                  <img
+                    src={`/rakhi${picked}.png`}
+                    alt={`Selected Rakhi ${picked}`}
+                    className="w-16 h-16 object-contain"
+                  />
+                </div>
               </div>
+
+              <h3 className="text-2xl font-bold text-red-900 mb-2">Provide Few Details</h3>
             </div>
+
+            {/* Form Container */}
+            <div className="bg-gradient-to-b from-orange-50 to-amber-50 rounded-3xl p-6 shadow-lg border border-orange-200">
             <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
               <label className="block text-sm text-red-900/80">Brother’s WhatsApp Number</label>
               <input value={broPhone} onChange={(e)=>setBroPhone(e.target.value)} placeholder="e.g., +91 98XXXXXXXX" className="mt-2 w-full rounded-xl border border-orange-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-orange-400" />
@@ -813,10 +831,17 @@ function SisterFlow() {
               )}
             </div>
 
-            <button onClick={handleSend} disabled={!broPhone}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-red-700 text-white px-4 sm:px-6 py-3 sm:py-4 font-semibold text-sm sm:text-base shadow-lg hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition">
-              📥 Download Rakhi Image + Send WhatsApp
-            </button>
+            {/* Step indicator and Next button */}
+            <div className="flex items-center justify-between mt-6">
+              <span className="text-red-600 font-medium">Step1/2</span>
+              <button
+                onClick={handleSend}
+                disabled={!broPhone}
+                className="bg-red-900 hover:bg-red-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 shadow-lg"
+              >
+                Next
+              </button>
+            </div>
 
             <div className="text-xs text-red-700/60 text-center px-4 mt-3 space-y-1">
               <p><strong>📱 How to Send Rakhi Image:</strong></p>
@@ -824,6 +849,7 @@ function SisterFlow() {
               <p>2. In WhatsApp: Click 📎 (attachment) → Photo → Select downloaded rakhi image</p>
               <p>3. Add the pre-written message and send!</p>
               <p className="text-green-600 font-medium mt-2">✅ Brother gets actual rakhi image + digital link!</p>
+            </div>
             </div>
           </div>
         )}
@@ -866,41 +892,65 @@ function BrotherFlow() {
   }
 
   return (
-    <section className="min-h-screen px-3 sm:px-4 pt-8 pb-24">
+    <section className="min-h-screen px-3 sm:px-4 pt-8 pb-24 relative">
+      {/* Back button at top */}
+      <button
+        onClick={() => window.history.back()}
+        className="absolute top-4 left-4 z-50 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg border border-amber-200 transition-all duration-300 hover:scale-105"
+      >
+        <svg className="w-6 h-6 text-amber-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
       <div className="max-w-2xl mx-auto">
-        <div className="text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 px-2">To My Lovely Sister</h2>
-          <div className="flex justify-center mt-3">
-            <img src="/bhen.png" alt="Sister" className="w-12 h-12 object-contain" />
+        {/* Header with gift box icon */}
+        <div className="text-center mb-8">
+          <h2 className="text-lg text-gray-600 mb-4">Provide details for whom to send</h2>
+
+          {/* Gift Box Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="w-24 h-24 bg-gradient-to-br from-orange-200 to-amber-300 rounded-2xl border-4 border-blue-400 flex items-center justify-center shadow-lg">
+              <div className="text-4xl">🎁</div>
+            </div>
           </div>
+
+          <h3 className="text-2xl font-bold text-red-900 mb-2">Provide Few Details</h3>
         </div>
-        <div className="mt-6 sm:mt-8 grid gap-4 sm:gap-6">
+
+        {/* Form Container with better styling */}
+        <div className="bg-gradient-to-b from-orange-50 to-amber-50 rounded-3xl p-6 shadow-lg border border-orange-200">
           <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
             <label className="block text-sm text-amber-900/80">Sister’s Name</label>
-            <input value={sisName} onChange={(e)=>setSisName(e.target.value)} placeholder="e.g., Aisha" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
+            <input value={sisName} onChange={(e)=>setSisName(e.target.value)} placeholder="Write Your name" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
           </div>
           <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <label className="block text-sm text-amber-900/80">Personal Message</label>
-              <button onClick={()=>setMsg(aiMessages[Math.floor(Math.random()*aiMessages.length)])} className="text-xs sm:text-sm underline text-amber-700 self-start sm:ml-auto">✨ Suggest</button>
+              <button onClick={()=>setMsg(aiMessages[Math.floor(Math.random()*aiMessages.length)])} className="text-xs sm:text-sm underline text-amber-700 self-start sm:ml-auto">✨ Write using AI</button>
             </div>
-            <textarea value={msg} onChange={(e)=>setMsg(e.target.value)} rows={4} placeholder="Write something heartfelt…" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
+            <textarea value={msg} onChange={(e)=>setMsg(e.target.value)} rows={4} placeholder="Write something sweet..." className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
           </div>
           <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-5">
             <label className="block text-sm text-amber-900/80">Sister’s WhatsApp Number</label>
-            <input value={sisPhone} onChange={(e)=>setSisPhone(e.target.value)} placeholder="e.g., +91 98XXXXXXXX" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
+            <input value={sisPhone} onChange={(e)=>setSisPhone(e.target.value)} placeholder="98xxxxxx" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
           </div>
           <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
             <label className="block text-sm text-amber-900/80">Gift Card Link (optional)</label>
             <input value={giftLink} onChange={(e)=>setGiftLink(e.target.value)} placeholder="Paste Amazon/Flipkart/Myntra card URL" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
           </div>
 
-          <button onClick={handleSend} disabled={!sisPhone}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 text-white px-4 sm:px-6 py-3 sm:py-4 font-semibold text-sm sm:text-base shadow hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
-            📤 Send Wishes on WhatsApp
-          </button>
-
-          <p className="text-xs text-amber-700/60 text-center px-4">WhatsApp will open with your personalized message and gift link.</p>
+          {/* Step indicator and Next button */}
+          <div className="flex items-center justify-between mt-6">
+            <span className="text-red-600 font-medium">Step1/2</span>
+            <button
+              onClick={handleSend}
+              disabled={!sisPhone}
+              className="bg-red-900 hover:bg-red-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 shadow-lg"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </section>
