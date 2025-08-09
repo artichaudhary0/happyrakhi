@@ -1,6 +1,48 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Lottie from 'lottie-react';
 import QRCode from 'qrcode';
+
+// Function to update Open Graph meta tags for WhatsApp preview
+function updateMetaTags(rakhiSeed, message) {
+  const rakhiImages = [
+    'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop', // Beautiful rakhi 1
+    'https://images.unsplash.com/photo-1597149508230-0c0c6d4d6c6c?w=800&h=600&fit=crop', // Beautiful rakhi 2
+    'https://images.unsplash.com/photo-1628191081676-8f0c8e5e5e5e?w=800&h=600&fit=crop', // Beautiful rakhi 3
+    'https://images.unsplash.com/photo-1629630062-8b9f8b8b8b8b?w=800&h=600&fit=crop', // Beautiful rakhi 4
+    'https://images.unsplash.com/photo-1630630062-8b9f8b8b8b8b?w=800&h=600&fit=crop', // Beautiful rakhi 5
+    'https://picsum.photos/800/600?random=1', // Fallback beautiful image 1
+    'https://picsum.photos/800/600?random=2', // Fallback beautiful image 2
+    'https://picsum.photos/800/600?random=3', // Fallback beautiful image 3
+    'https://picsum.photos/800/600?random=4', // Fallback beautiful image 4
+    'https://picsum.photos/800/600?random=5'  // Fallback beautiful image 5
+  ];
+
+  const selectedImage = rakhiImages[rakhiSeed] || rakhiImages[0];
+
+  // Update or create meta tags
+  const updateMetaTag = (property, content) => {
+    let meta = document.querySelector(`meta[property="${property}"]`);
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('property', property);
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', content);
+  };
+
+  updateMetaTag('og:title', '🎀 Digital Rakhi from Sister');
+  updateMetaTag('og:description', message || 'Happy Raksha Bandhan! I\'ve sent you a beautiful digital rakhi with love.');
+  updateMetaTag('og:image', selectedImage);
+  updateMetaTag('og:image:width', '800');
+  updateMetaTag('og:image:height', '600');
+  updateMetaTag('og:type', 'website');
+  updateMetaTag('og:url', window.location.href);
+
+  // Twitter Card meta tags
+  updateMetaTag('twitter:card', 'summary_large_image');
+  updateMetaTag('twitter:title', '🎀 Digital Rakhi from Sister');
+  updateMetaTag('twitter:description', message || 'Happy Raksha Bandhan! I\'ve sent you a beautiful digital rakhi with love.');
+  updateMetaTag('twitter:image', selectedImage);
+}
 
 // ------------------------------------------------------------
 // Digital Bandhan — single-file React app
@@ -124,7 +166,7 @@ function pushQuery(params) {
 function SparkleBg() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-amber-50 via-orange-50 to-rose-50" />
+      <div className="absolute inset-0 bg-gradient-to-b from-orange-100 via-amber-50 to-orange-100" />
       {/* floating marigold dots */}
       {[...Array(24)].map((_, i) => (
         <div
@@ -184,6 +226,41 @@ function RakhiSVG({ seed = 0, size = 96 }) {
   );
 }
 
+// Function to convert SVG to downloadable image
+function svgToImage(svgElement, width = 300, height = 300) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+
+    // Create a white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      // Center the rakhi on canvas
+      const padding = 50;
+      const size = Math.min(width, height) - (padding * 2);
+      const x = (width - size) / 2;
+      const y = (height - size) / 2;
+
+      ctx.drawImage(img, x, y, size, size);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png', 0.9);
+    };
+    img.src = url;
+  });
+}
+
 function MarqueeRakhis({ onPick }) {
   const items = useMemo(() => Array.from({ length: 10 }, (_, i) => i), []);
   const trackRef = useRef(null);
@@ -217,93 +294,105 @@ function MarqueeRakhis({ onPick }) {
 }
 
 function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
-  const [phase, setPhase] = useState(0); // 0: waiting, 1: rakhi drops, 2: box opens, 3: rakhi goes in, 4: complete
-  const lottieRef = useRef();
-  const [giftBoxData, setGiftBoxData] = useState(null);
-  const [animationStarted, setAnimationStarted] = useState(false);
-
-  // Load the gift box animation data
-  useEffect(() => {
-    fetch('/gift_box.json')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('Gift box data loaded successfully');
-        setGiftBoxData(data);
-      })
-      .catch(error => {
-        console.error('Error loading gift box animation:', error);
-        // Set a flag to use fallback animation
-        setGiftBoxData('fallback');
-      });
-  }, []);
+  const [phase, setPhase] = useState(0); // 0: waiting, 1: rakhi appears, 2: box opens, 3: rakhi drops, 4: lid starts moving, 5: lid halfway, 6: box closes
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 600);   // rakhi appears
-    const t2 = setTimeout(() => setPhase(2), 1200);  // box opens
-    const t3 = setTimeout(() => setPhase(3), 2400);  // rakhi drops into box
-    const t4 = setTimeout(() => setPhase(4), 3600);  // WAIT for rakhi to be inside, THEN close
-    const t5 = setTimeout(() => onDone && onDone(), 4400);
+    const t1 = setTimeout(() => setPhase(1), 1000);   // rakhi appears
+    const t2 = setTimeout(() => setPhase(2), 2500);   // rakhi starts dropping
+    const t3 = setTimeout(() => setPhase(3), 4000);   // rakhi halfway down - lid starts closing
+    const t4 = setTimeout(() => setPhase(4), 4100);   // lid closes immediately
+    const t5 = setTimeout(() => onDone && onDone(), 4600); // complete
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); };
   }, [onDone]);
 
-  // Control Lottie animation: open when phase 2, close when phase 4
-  useEffect(() => {
-    if (lottieRef.current && giftBoxData) {
-      if (phase === 2 && !animationStarted) {
-        // Box opens and stays open
-        lottieRef.current.play();
-        setAnimationStarted(true);
-      } else if (phase === 4) {
-        // NOW close the box - restart animation to show closing
-        lottieRef.current.goToAndPlay(0, true);
-      }
-    }
-  }, [phase, giftBoxData, animationStarted]);
-
-  // Fallback simple box if Lottie fails to load
-  if (!giftBoxData) {
-    return (
-      <div className="relative mt-8 h-64 flex items-center justify-center">
-        <div className="text-amber-600">Loading gift box...</div>
-      </div>
-    );
-  }
-
-  // Use fallback simple box animation if Lottie failed
-  if (giftBoxData === 'fallback') {
-    return (
-      <div className="relative mt-8 h-64">
-        {/* Rakhi floating and dropping */}
-        <div className={`absolute left-1/2 -translate-x-1/2 transition-all duration-1200 ease-in-out ${
-          phase === 0 ? "-top-6 scale-100 opacity-0" :
-          phase === 1 ? "-top-6 scale-100 opacity-100" :
-          phase === 2 ? "top-4 scale-90 opacity-100" :
-          phase === 3 ? "top-20 scale-70 opacity-100" :
-          "top-24 scale-50 opacity-0"
-        }`}>
+  // Always use beautiful CSS box animation
+  return (
+      <div className="relative mt-16 h-80">
+        {/* Rakhi floating and dropping completely inside the box */}
+        <div className={`absolute left-1/2 -translate-x-1/2 transition-all ease-in-out ${
+          phase === 0 ? "top-8 scale-100 opacity-0 duration-0" :
+          phase === 1 ? "top-8 scale-100 opacity-100 duration-1000" :
+          phase >= 2 ? "top-36 scale-40 opacity-0 duration-3000" : ""
+        }`} style={{ zIndex: phase >= 3 ? 1 : 10 }}>
           <div className={phase === 1 ? "animate-pulse" : ""}>
-            <RakhiSVG seed={rakhiSeed} size={100} />
+            <div data-rakhi-seed={rakhiSeed}>
+              <RakhiSVG seed={rakhiSeed} size={100} />
+            </div>
           </div>
         </div>
 
-        {/* Simple fallback box */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-          <div className="w-32 h-24 bg-gradient-to-b from-amber-200 to-amber-400 border-2 border-amber-600 rounded-lg shadow-lg relative">
-            {/* Box flaps */}
-            <div className={`absolute -top-2 left-0 w-8 h-6 bg-amber-300 border border-amber-600 rounded-t transition-transform duration-700 ${
-              phase >= 2 && phase < 4 ? '-rotate-45 -translate-x-2' : 'rotate-0'
-            }`} style={{ transformOrigin: 'bottom right' }} />
-            <div className={`absolute -top-2 right-0 w-8 h-6 bg-amber-300 border border-amber-600 rounded-t transition-transform duration-700 ${
-              phase >= 2 && phase < 4 ? 'rotate-45 translate-x-2' : 'rotate-0'
-            }`} style={{ transformOrigin: 'bottom left' }} />
-            <div className={`absolute -top-2 left-8 right-8 h-6 bg-amber-300 border border-amber-600 rounded-t transition-transform duration-700 ${
-              phase >= 2 && phase < 4 ? '-translate-y-4' : 'translate-y-0'
-            }`} />
+        {/* Professional Lottie-style Gift Box */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
+          <div className="relative" style={{ perspective: '1000px' }}>
+
+            {/* Box Base - 3D effect */}
+            <div className={`relative w-40 h-32 transition-all duration-500 ${
+              phase >= 2 && phase < 4 ? "transform translate-y-1" : ""
+            }`} style={{ transformStyle: 'preserve-3d' }}>
+
+              {/* Main box body */}
+              <div className="w-full h-full bg-gradient-to-br from-red-400 via-red-500 to-red-700 rounded-lg shadow-2xl relative overflow-hidden">
+                {/* Box front face highlight */}
+                <div className="absolute top-2 left-2 w-8 h-6 bg-white/20 rounded-lg blur-sm"></div>
+                {/* Box side shadow */}
+                <div className="absolute bottom-2 right-1 w-full h-4 bg-black/30 rounded-lg blur-md"></div>
+                {/* Box texture */}
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-black/20 rounded-lg"></div>
+              </div>
+
+              {/* Box Lid - simple top-down animation */}
+              <div className={`absolute w-full h-10 bg-gradient-to-br from-red-300 via-red-400 to-red-600 rounded-lg shadow-xl transition-all duration-500 ease-out`}
+                style={{
+                  transformOrigin: 'center',
+                  transformStyle: 'preserve-3d',
+                  left: '0px',
+                  top: phase < 4 ? '-200px' : '-12px',
+                  transform: phase < 4 ? 'rotate(-5deg)' : 'rotate(0deg)',
+                  zIndex: 50
+                }}>
+                {/* Lid highlight */}
+                <div className="absolute top-1 left-3 w-10 h-3 bg-white/30 rounded-full blur-sm"></div>
+                {/* Lid edge */}
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-red-800/50 rounded-b-lg"></div>
+              </div>
+            </div>
+
+            {/* Vertical Ribbon */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-full bg-gradient-to-b from-yellow-300 via-yellow-400 to-yellow-600 shadow-lg z-10">
+              {/* Ribbon shine */}
+              <div className="absolute top-2 left-1 w-2 h-full bg-yellow-200/60 rounded-full"></div>
+              {/* Ribbon shadow */}
+              <div className="absolute top-2 right-1 w-1 h-full bg-yellow-800/40 rounded-full"></div>
+            </div>
+
+            {/* Horizontal Ribbon */}
+            <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-8 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 shadow-lg z-10">
+              {/* Ribbon shine */}
+              <div className="absolute top-1 left-2 w-full h-2 bg-yellow-200/60 rounded-full"></div>
+              {/* Ribbon shadow */}
+              <div className="absolute bottom-1 left-2 w-full h-1 bg-yellow-800/40 rounded-full"></div>
+            </div>
+
+            {/* Ribbon Bow - 3D effect */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-8 z-20">
+              {/* Left bow wing */}
+              <div className="absolute left-0 top-2 w-4 h-5 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 rounded-full transform -rotate-12 shadow-lg">
+                <div className="absolute top-1 left-1 w-2 h-2 bg-yellow-200/50 rounded-full"></div>
+              </div>
+              {/* Right bow wing */}
+              <div className="absolute right-0 top-2 w-4 h-5 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 rounded-full transform rotate-12 shadow-lg">
+                <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-200/50 rounded-full"></div>
+              </div>
+              {/* Bow center knot */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-3 w-3 h-4 bg-gradient-to-b from-yellow-400 via-yellow-500 to-yellow-700 rounded-sm shadow-md">
+                <div className="absolute top-1 left-0.5 w-1 h-2 bg-yellow-200/40 rounded-full"></div>
+              </div>
+              {/* Bow shadow */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-6 w-8 h-2 bg-black/20 rounded-full blur-sm"></div>
+            </div>
+
+            {/* Box shadow on ground */}
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-44 h-6 bg-black/30 rounded-full blur-lg"></div>
           </div>
         </div>
 
@@ -331,62 +420,86 @@ function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
             `}</style>
           </div>
         )}
+
+        {/* Full Page Confetti after box closes */}
+        {phase >= 4 && (
+          <div className="fixed inset-0 pointer-events-none z-50">
+            {/* Bouncing confetti all over screen */}
+            {[...Array(100)].map((_, i) => (
+              <div
+                key={i}
+                className={`absolute w-3 h-3 rounded-full animate-bounce ${
+                  i % 8 === 0 ? 'bg-yellow-400' :
+                  i % 8 === 1 ? 'bg-pink-400' :
+                  i % 8 === 2 ? 'bg-red-400' :
+                  i % 8 === 3 ? 'bg-blue-400' :
+                  i % 8 === 4 ? 'bg-green-400' :
+                  i % 8 === 5 ? 'bg-purple-400' :
+                  i % 8 === 6 ? 'bg-orange-400' :
+                  'bg-indigo-400'
+                }`}
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 3}s`,
+                  animationDuration: `${0.8 + Math.random() * 1.5}s`
+                }}
+              />
+            ))}
+
+            {/* Falling confetti from top */}
+            {[...Array(80)].map((_, i) => (
+              <div
+                key={`fall-${i}`}
+                className={`absolute w-4 h-2 ${
+                  i % 6 === 0 ? 'bg-yellow-500' :
+                  i % 6 === 1 ? 'bg-pink-500' :
+                  i % 6 === 2 ? 'bg-red-500' :
+                  i % 6 === 3 ? 'bg-blue-500' :
+                  i % 6 === 4 ? 'bg-green-500' :
+                  'bg-purple-500'
+                }`}
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: '-20px',
+                  animation: `fall ${2 + Math.random() * 4}s linear infinite`,
+                  animationDelay: `${Math.random() * 3}s`
+                }}
+              />
+            ))}
+
+            {/* Floating hearts and stars */}
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={`emoji-${i}`}
+                className="absolute text-2xl animate-float-up"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${80 + Math.random() * 20}%`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  animationDuration: `${3 + Math.random() * 2}s`
+                }}
+              >
+                {i % 4 === 0 ? '❤️' : i % 4 === 1 ? '🎉' : i % 4 === 2 ? '✨' : '🎊'}
+              </div>
+            ))}
+
+            {/* CSS for animations */}
+            <style>{`
+              @keyframes fall {
+                0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+              }
+              @keyframes float-up {
+                0% { transform: translateY(0px); opacity: 1; }
+                100% { transform: translateY(-200px); opacity: 0; }
+              }
+              .animate-float-up { animation: float-up linear infinite; }
+            `}</style>
+          </div>
+        )}
       </div>
     );
-  }
-
-  return (
-    <div className="relative mt-8 h-64">
-      {/* Rakhi floating and dropping */}
-      <div className={`absolute left-1/2 -translate-x-1/2 transition-all duration-1200 ease-in-out ${
-        phase === 0 ? "-top-6 scale-100 opacity-0" :
-        phase === 1 ? "-top-6 scale-100 opacity-100" :
-        phase === 2 ? "top-4 scale-90 opacity-100" :
-        phase === 3 ? "top-20 scale-70 opacity-100" :
-        "top-24 scale-50 opacity-0"
-      }`}>
-        <div className={phase === 1 ? "animate-pulse" : ""}>
-          <RakhiSVG seed={rakhiSeed} size={100} />
-        </div>
-      </div>
-
-      {/* Lottie Gift Box Animation */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <Lottie
-          lottieRef={lottieRef}
-          animationData={giftBoxData}
-          loop={false}
-          autoplay={false}
-          style={{ width: 200, height: 160 }}
-        />
-      </div>
-
-      {/* Sparkles when box closes */}
-      {phase === 4 && (
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(15)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 rounded-full bg-yellow-400 animate-sparkle"
-              style={{
-                top: `${30 + Math.random() * 40}%`,
-                left: `${30 + Math.random() * 40}%`,
-                animationDelay: `${Math.random() * 0.8}s`
-              }}
-            />
-          ))}
-          <style>{`
-            @keyframes sparkle {
-              0% { transform: scale(0); opacity: 0; }
-              50% { transform: scale(1); opacity: 1; }
-              100% { transform: scale(0); opacity: 0; }
-            }
-            .animate-sparkle { animation: sparkle 1000ms ease-out forwards; }
-          `}</style>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // --- Screens ---------------------------------------------------
@@ -395,23 +508,68 @@ function Landing({ onPick }) {
     <section className="min-h-screen grid place-items-center text-center px-4 py-8">
       <SparkleBg />
       <div className="max-w-3xl w-full">
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-amber-900">Digital Bandhan</h1>
-        <p className="mt-3 text-sm sm:text-base text-amber-800/80 px-2">Celebrate Raksha Bandhan with a playful digital rakhi & heartfelt wishes.</p>
-        <div className="mt-8 sm:mt-10 grid gap-4 sm:grid-cols-2 max-w-2xl mx-auto">
-          <button onClick={() => onPick("sister")}
-            className="group rounded-2xl bg-white/80 border border-amber-200 p-4 sm:p-6 shadow hover:shadow-lg hover:-translate-y-0.5 transition transform">
-            <div className="text-2xl sm:text-3xl">🎀</div>
-            <div className="mt-2 text-lg sm:text-xl font-semibold">Send Rakhi to My Brother</div>
-            <p className="text-xs sm:text-sm text-amber-700/80 mt-1">Choose a rakhi, pack it, and request a gift via UPI.</p>
-          </button>
-          <button onClick={() => onPick("brother")}
-            className="group rounded-2xl bg-white/80 border border-amber-200 p-4 sm:p-6 shadow hover:shadow-lg hover:-translate-y-0.5 transition transform">
-            <div className="text-2xl sm:text-3xl">💌</div>
-            <div className="mt-2 text-lg sm:text-xl font-semibold">Send Wishes to My Sister</div>
-            <p className="text-xs sm:text-sm text-amber-700/80 mt-1">Write a message and share a gift-card link over WhatsApp.</p>
-          </button>
+        <div className="text-center mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-red-900 tracking-wide">HAPPY</h1>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-red-900 -mt-2" style={{fontFamily: 'serif'}}>Raksha</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-900 -mt-1 tracking-wide">BANDHAN</h1>
         </div>
-        <p className="mt-6 sm:mt-8 text-xs text-amber-700/60 px-4">Sound off by default • No data stored • WhatsApp opens with prefilled text</p>
+        <p className="text-center text-base text-red-700/80 mb-8 px-4">Celebrate Raksha Bandhan with a playful digital rakhi & heartfelt wishes.</p>
+        <div className="max-w-none mx-auto px-4">
+          {/* Mobile: Stack vertically, Desktop: Side by side */}
+          <div className="flex flex-col lg:flex-row lg:items-stretch lg:justify-center gap-6 lg:gap-12">
+            {/* First Card */}
+            <button onClick={() => onPick("sister")}
+              className="group rounded-2xl bg-white border border-orange-200 p-6 lg:p-20 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 w-full lg:flex-1 lg:min-w-[500px] min-h-[180px] lg:min-h-[350px]">
+              <div className="flex items-center justify-between h-full">
+                {/* Text Content - LEFT SIDE */}
+                <div className="flex-1">
+                  <div className="text-xl lg:text-2xl font-semibold text-gray-800 mb-4 lg:mb-6">Send Digital Rakhi</div>
+                  <button className="px-4 py-2 lg:px-6 lg:py-3 bg-orange-200 text-red-800 rounded-lg text-sm lg:text-base font-medium hover:bg-orange-300 transition-colors">
+                    Extort Money →
+                  </button>
+                </div>
+                {/* Character Image - RIGHT SIDE */}
+                <div className="flex-shrink-0 ml-4 lg:ml-8">
+                  <img src="/bhen.png" alt="Sister" className="w-20 h-20 sm:w-24 sm:h-24 lg:w-36 lg:h-36 object-contain" />
+                </div>
+              </div>
+            </button>
+
+            {/* OR Divider - Show on mobile only */}
+            <div className="flex items-center justify-center py-2 lg:hidden">
+              <div className="text-lg font-medium text-gray-500 bg-orange-50 px-4 py-1 rounded-full border border-orange-200">
+                OR
+              </div>
+            </div>
+
+            {/* OR Divider - Show on desktop only */}
+            <div className="hidden lg:flex items-center justify-center">
+              <div className="text-2xl font-bold text-gray-400 bg-white px-4 py-2 rounded-full border border-orange-200 shadow-lg">
+                OR
+              </div>
+            </div>
+
+            {/* Second Card */}
+            <button onClick={() => onPick("brother")}
+              className="group rounded-2xl bg-white border border-orange-200 p-6 lg:p-20 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 w-full lg:flex-1 lg:min-w-[500px] min-h-[180px] lg:min-h-[350px]">
+              <div className="flex items-center justify-between h-full">
+                {/* Text Content - LEFT SIDE */}
+                <div className="flex-1">
+                  <div className="text-xl lg:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">Send Your</div>
+                  <div className="text-xl lg:text-2xl font-semibold text-gray-800 mb-4 lg:mb-6">sister a Gift</div>
+                  <button className="px-4 py-2 lg:px-6 lg:py-3 bg-orange-200 text-red-800 rounded-lg text-sm lg:text-base font-medium hover:bg-orange-300 transition-colors">
+                    Send Gift →
+                  </button>
+                </div>
+                {/* Character Image - RIGHT SIDE */}
+                <div className="flex-shrink-0 ml-4 lg:ml-8">
+                  <img src="/bhai.png" alt="Brother" className="w-20 h-20 sm:w-24 sm:h-24 lg:w-36 lg:h-36 object-contain" />
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
       </div>
     </section>
   );
@@ -439,7 +597,57 @@ function SisterFlow() {
     return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
   }
 
+  async function downloadRakhiImage() {
+    try {
+      // Try to use custom rakhi image first
+      const customRakhiUrl = '/rakhi1.png';
+
+      // Check if custom image exists, otherwise fall back to generated SVG
+      const response = await fetch(customRakhiUrl);
+      if (response.ok) {
+        // Download custom rakhi image
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `beautiful-rakhi.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+    } catch (error) {
+      console.log('Custom rakhi image not available, using generated SVG');
+    }
+
+    // Fallback to generated SVG
+    const svgElement = document.querySelector(`[data-rakhi-seed="${picked}"]`);
+    if (!svgElement) return;
+
+    try {
+      const blob = await svgToImage(svgElement, 400, 400);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rakhi-${picked + 1}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download rakhi image:', error);
+    }
+  }
+
   function handleSend() {
+    // Check if phone number is provided
+    if (!broPhone || !broPhone.trim()) {
+      alert('Please enter brother\'s phone number first!');
+      return;
+    }
+
+    // Build WhatsApp message
     const rakhiLink = buildRakhiViewLink();
     const upiLink = makeUPILink({ pa: upi, am: effectiveAmount, tn: "Rakhi Gift" });
 
@@ -456,13 +664,39 @@ function SisterFlow() {
       finalText += `\n\n🎁 If you'd like to send your blessings (₹${effectiveAmount}): ${upiLink}`;
     }
 
-    finalText += `\n\nHappy Raksha Bandhan! 🎀`;
+    // Download rakhi image first
+    downloadRakhiImage().catch(error => {
+      console.log('Image download failed:', error);
+    });
 
-    window.open(makeWhatsAppLink(broPhone, finalText), "_blank");
+    finalText += `\n\n📷 *Beautiful rakhi image has been downloaded to your phone!*`;
+    finalText += `\nPlease attach the downloaded image to this WhatsApp chat.`;
+    finalText += `\n\n✨ *Happy Raksha Bandhan!* ✨`;
+
+    // Create WhatsApp link and open immediately
+    const whatsappUrl = makeWhatsAppLink(broPhone, finalText);
+    console.log('Opening WhatsApp with URL:', whatsappUrl);
+    console.log('Phone number:', broPhone);
+
+
+
+    // Open WhatsApp immediately - try multiple methods
+    try {
+      // Method 1: Open in new tab (preferred for mobile)
+      const opened = window.open(whatsappUrl, '_blank');
+      if (!opened) {
+        // Method 2: Direct navigation if popup blocked
+        window.location.href = whatsappUrl;
+      }
+    } catch (error) {
+      console.error('Failed to open WhatsApp:', error);
+      // Method 3: Fallback direct navigation
+      window.location.href = whatsappUrl;
+    }
   }
 
   return (
-    <section className="min-h-screen px-3 sm:px-4 pt-16 pb-24">
+    <section className="min-h-screen px-3 sm:px-4 pt-8 pb-24">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center px-2">Choose a Rakhi for Bhai ❤️</h2>
 
@@ -475,8 +709,8 @@ function SisterFlow() {
 
         {picked !== null && !packed && (
           <div className="mt-6 text-center">
-            <div className="inline-block rounded-2xl bg-white/80 px-3 sm:px-4 py-2 border border-amber-200 shadow">
-              <p className="text-sm sm:text-base text-amber-900/90">Nice pick! Packing your rakhi…</p>
+            <div className="inline-block rounded-2xl bg-white px-3 sm:px-4 py-2 border border-orange-200 shadow-lg">
+              <p className="text-sm sm:text-base text-red-900/90">Nice pick! Packing your rakhi…</p>
             </div>
             <BoxPackAnimation rakhiSeed={picked} onDone={() => setPacked(true)} />
           </div>
@@ -484,31 +718,40 @@ function SisterFlow() {
 
         {packed && (
           <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6">
-            <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
-              <label className="block text-sm text-amber-900/80">Brother’s WhatsApp Number</label>
-              <input value={broPhone} onChange={(e)=>setBroPhone(e.target.value)} placeholder="e.g., +91 98XXXXXXXX" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
+            {/* Display selected rakhi for download */}
+            <div className="text-center">
+              <div className="inline-block rounded-2xl bg-white border border-orange-200 shadow-lg p-4">
+                <p className="text-sm text-red-900/80 mb-3">Your Selected Rakhi</p>
+                <div data-rakhi-seed={picked}>
+                  <RakhiSVG seed={picked} size={120} />
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
+              <label className="block text-sm text-red-900/80">Brother’s WhatsApp Number</label>
+              <input value={broPhone} onChange={(e)=>setBroPhone(e.target.value)} placeholder="e.g., +91 98XXXXXXXX" className="mt-2 w-full rounded-xl border border-orange-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
 
-            <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
-              <label className="block text-sm text-amber-900/80">Amount to request (optional)</label>
+            <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
+              <label className="block text-sm text-red-900/80">Amount to request (optional)</label>
               <div className="mt-3 flex flex-wrap gap-2">
                 {rupeeTiles.map(v => (
-                  <button key={v} onClick={()=>{ setAmount(v); setCustomAmount(""); }} className={`px-3 sm:px-4 py-2 rounded-xl border text-sm sm:text-base ${amount===v && !customAmount? "bg-amber-600 text-white border-amber-600" : "border-amber-300 bg-white"}`}>₹{v}</button>
+                  <button key={v} onClick={()=>{ setAmount(v); setCustomAmount(""); }} className={`px-3 sm:px-4 py-2 rounded-xl border text-sm sm:text-base ${amount===v && !customAmount? "bg-red-600 text-white border-red-600" : "border-orange-300 bg-white"}`}>₹{v}</button>
                 ))}
-                <input value={customAmount} onChange={(e)=>setCustomAmount(e.target.value)} inputMode="numeric" placeholder="Custom" className="px-3 py-2 rounded-xl border border-amber-300 bg-white w-20 sm:w-28 text-sm sm:text-base" />
+                <input value={customAmount} onChange={(e)=>setCustomAmount(e.target.value)} inputMode="numeric" placeholder="Custom" className="px-3 py-2 rounded-xl border border-orange-300 bg-white w-20 sm:w-28 text-sm sm:text-base" />
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
+            <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <label className="block text-sm text-amber-900/80">Message (optional)</label>
-                <button onClick={()=>setMsg(aiMessages[Math.floor(Math.random()*aiMessages.length)])} className="text-xs sm:text-sm underline text-amber-700 self-start sm:ml-auto">✨ Generate</button>
+                <label className="block text-sm text-red-900/80">Message (optional)</label>
+                <button onClick={()=>setMsg(aiMessages[Math.floor(Math.random()*aiMessages.length)])} className="text-xs sm:text-sm underline text-red-700 self-start sm:ml-auto">✨ Generate</button>
               </div>
-              <textarea value={msg} onChange={(e)=>setMsg(e.target.value)} rows={3} placeholder="Write something sweet…" className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-400" />
+              <textarea value={msg} onChange={(e)=>setMsg(e.target.value)} rows={3} placeholder="Write something sweet…" className="mt-2 w-full rounded-xl border border-orange-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
 
-            <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
-              <label className="block text-sm text-amber-900/80">Your UPI ID (to receive the gift)</label>
+            <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
+              <label className="block text-sm text-red-900/80">Your UPI ID (to receive the gift)</label>
               <input
                 value={upi}
                 onChange={(e)=>setUpi(e.target.value)}
@@ -516,11 +759,11 @@ function SisterFlow() {
                 className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 ${
                   upi && !isValidUPI(upi)
                     ? 'border-red-300 bg-red-50 focus:ring-red-400'
-                    : 'border-amber-300 bg-white focus:ring-amber-400'
+                    : 'border-orange-300 bg-white focus:ring-orange-400'
                 }`}
               />
               {upi && (
-                <div className="mt-3 text-xs text-amber-800/80">We’ll include a secure UPI payment link for Bhai to scan or tap.</div>
+                <div className="mt-3 text-xs text-red-800/80">We’ll include a secure UPI payment link for Bhai to scan or tap.</div>
               )}
 
               {/* UPI Validation Feedback */}
@@ -550,11 +793,17 @@ function SisterFlow() {
             </div>
 
             <button onClick={handleSend} disabled={!broPhone}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 text-white px-4 sm:px-6 py-3 sm:py-4 font-semibold text-sm sm:text-base shadow hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
-              📤 Send Rakhi on WhatsApp
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-red-700 text-white px-4 sm:px-6 py-3 sm:py-4 font-semibold text-sm sm:text-base shadow-lg hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition">
+              📥 Download Rakhi Image + Send WhatsApp
             </button>
 
-            <p className="text-xs text-amber-700/60 text-center px-4 mt-3">WhatsApp will open with a prefilled message. You can edit before sending.</p>
+            <div className="text-xs text-red-700/60 text-center px-4 mt-3 space-y-1">
+              <p><strong>📱 How to Send Rakhi Image:</strong></p>
+              <p>1. Click button → Downloads rakhi image + opens WhatsApp</p>
+              <p>2. In WhatsApp: Click 📎 (attachment) → Photo → Select downloaded rakhi image</p>
+              <p>3. Add the pre-written message and send!</p>
+              <p className="text-green-600 font-medium mt-2">✅ Brother gets actual rakhi image + digital link!</p>
+            </div>
           </div>
         )}
       </div>
@@ -580,13 +829,19 @@ function BrotherFlow() {
   function handleSend() {
     const link = buildWishLink();
     const text = `Hey ${sisName || "Didi"}! Sending you my Raksha Bandhan wishes 💖 Read here: ${link}${giftLink ? `\nAnd a small gift for you: ${giftLink}` : ""}`;
-    window.open(makeWhatsAppLink(sisPhone, text), "_blank");
+    // Open WhatsApp directly (same tab for smoother experience)
+    window.location.href = makeWhatsAppLink(sisPhone, text);
   }
 
   return (
-    <section className="min-h-screen px-3 sm:px-4 pt-16 pb-24">
+    <section className="min-h-screen px-3 sm:px-4 pt-8 pb-24">
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center px-2">To My Lovely Sister 💖</h2>
+        <div className="text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 px-2">To My Lovely Sister</h2>
+          <div className="flex justify-center mt-3">
+            <img src="/bhen.png" alt="Sister" className="w-12 h-12 object-contain" />
+          </div>
+        </div>
         <div className="mt-6 sm:mt-8 grid gap-4 sm:gap-6">
           <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-4 sm:p-5">
             <label className="block text-sm text-amber-900/80">Sister’s Name</label>
@@ -636,7 +891,7 @@ function BrotherReceivedView({ params }) {
   }, []);
 
   return (
-    <section className="min-h-screen px-4 pt-16 pb-24">
+    <section className="min-h-screen px-4 pt-8 pb-24">
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-3xl md:text-4xl font-bold text-amber-900">Your Digital Rakhi 🎁</h2>
         <p className="text-amber-800/80 mt-2">A rakhi sent with love — open your surprise</p>
@@ -688,7 +943,9 @@ function SisterReceivedView({ params }) {
       <div className="max-w-2xl mx-auto text-center">
         <h2 className="text-3xl md:text-4xl font-bold text-amber-900">For {name} 💖</h2>
         <div className="mt-6 flex flex-col items-center gap-4">
-          <div className="w-28 h-28 rounded-full bg-white/80 border border-amber-200 shadow grid place-items-center animate-bounce-slow">🎀</div>
+          <div className="w-28 h-28 rounded-full bg-white/80 border border-amber-200 shadow grid place-items-center animate-bounce-slow">
+            <img src="/bhen.png" alt="Sister" className="w-20 h-20 object-contain" />
+          </div>
           <p className="text-lg text-amber-900/90 whitespace-pre-line">{msg}</p>
           {gift && (
             <a href={gift} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-2xl bg-amber-600 text-white px-5 py-3 font-semibold shadow hover:bg-amber-700">🎁 View Your Gift</a>
@@ -714,6 +971,13 @@ export default function DigitalBandhan() {
     else if (view === "sister") setRoute("sisterView");
   }, [view]);
 
+  // Update meta tags for WhatsApp preview when page loads
+  useEffect(() => {
+    const rakhiSeed = parseInt(qp.get("rakhi")) || 0;
+    const message = qp.get("msg") || "";
+    updateMetaTags(rakhiSeed, message);
+  }, [qp]);
+
   function navigate(next) {
     setRoute(next);
     const params = new URLSearchParams(window.location.search);
@@ -723,20 +987,10 @@ export default function DigitalBandhan() {
   }
 
   return (
-    <main className="font-[Inter,ui-sans-serif] text-amber-900">
+    <main className="font-[Inter,ui-sans-serif] text-red-900">
       <SparkleBg />
 
-      <header className="fixed top-0 left-0 right-0 z-20 backdrop-blur bg-white/50 border-b border-amber-100">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <button onClick={()=>navigate("home")} className="flex items-center gap-2 font-semibold text-amber-800">
-            <span className="text-xl">🪢</span> Digital Bandhan
-          </button>
-          <nav className="hidden sm:flex items-center gap-2 text-sm">
-            <button onClick={()=>navigate("sister")} className="px-3 py-1.5 rounded-xl border border-amber-300 bg-white hover:bg-amber-50">Send Rakhi</button>
-            <button onClick={()=>navigate("brother")} className="px-3 py-1.5 rounded-xl border border-amber-300 bg-white hover:bg-amber-50">Send Wishes</button>
-          </nav>
-        </div>
-      </header>
+
 
       {route === "home" && <Landing onPick={navigate} />}
       {route === "sister" && <SisterFlow />}
@@ -744,9 +998,7 @@ export default function DigitalBandhan() {
       {route === "brotherView" && <BrotherReceivedView params={qp} />}
       {route === "sisterView" && <SisterReceivedView params={qp} />}
 
-      <footer className="py-10 text-center text-xs text-amber-800/60">
-        Made with ❤️ for Raksha Bandhan • Demo experience — no data stored.
-      </footer>
+
     </main>
   );
 }
