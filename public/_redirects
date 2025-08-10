@@ -1,0 +1,5 @@
+# Redirect custom rakhi link to main app
+/happyrakhibhaiya    /index.html   200
+
+# Fallback for all other routes
+/*    /index.html   200

@@ -609,11 +609,22 @@ function SisterFlow() {
   function buildRakhiViewLink() {
     const params = new URLSearchParams();
     params.set("view", "brother");
-    params.set("rakhi", String(picked ?? 0));
+    params.set("rakhi", String(picked ?? 1)); // Default to rakhi 1 instead of 0
     if (msg) params.set("m", msg);
     if (upi) params.set("upi", upi);
     if (effectiveAmount) params.set("am", String(effectiveAmount));
-    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+
+    // Use deployed URL instead of localhost
+    const baseUrl = window.location.hostname === 'localhost'
+      ? 'https://happyrakhi-kd76kybo4-arti-chaudharys-projects.vercel.app'
+      : window.location.origin;
+
+    const finalUrl = `${baseUrl}/happyrakhibhaiya?${params.toString()}`;
+
+    // Debug log to check what rakhi is being sent
+    console.log("Sending rakhi:", picked, "Final URL:", finalUrl);
+
+    return finalUrl;
   }
 
   async function downloadRakhiImage() {
@@ -974,58 +985,136 @@ function BrotherReceivedView({ params }) {
 
   return (
     <section className="min-h-screen px-4 pt-8 pb-24 relative">
+      <SparkleBg />
       <div className="max-w-3xl mx-auto text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-amber-900">Your Digital Rakhi 🎁</h2>
-        <p className="text-amber-800/80 mt-2">A rakhi sent with love — open your surprise</p>
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-red-900 mb-2">🎀 Happy Raksha Bandhan! 🎀</h1>
+          <h2 className="text-2xl md:text-3xl font-semibold text-amber-900">Your Digital Rakhi 🎁</h2>
+          <p className="text-amber-800/80 mt-3 text-lg">A rakhi sent with love from your sister — open your surprise!</p>
+        </div>
 
         {/* Box reveal with actual images */}
-        <div className="relative mt-8 h-80 flex items-center justify-center">
+        <div className="relative mt-8 h-[500px] flex items-center justify-center">
+          {/* Magical sparkles around the box */}
+          {reveal >= 1 && (
+            <div className="absolute inset-0 pointer-events-none">
+              {[...Array(12)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 rounded-full bg-yellow-400 animate-ping"
+                  style={{
+                    top: `${20 + Math.random() * 60}%`,
+                    left: `${20 + Math.random() * 60}%`,
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${1 + Math.random()}s`
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Box bottom - always visible */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
             <img
               src="/box_bottom.png"
               alt="Box Bottom"
-              className="w-64 h-32 object-contain"
+              className="w-80 h-40 object-contain drop-shadow-lg"
             />
           </div>
 
+          {/* Selected rakhi appears in the middle - between box parts */}
+          {reveal>=2 && (
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-32 animate-bounce z-20">
+              <div className="relative">
+                {/* Glow effect behind rakhi */}
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-red-400 rounded-full blur-xl opacity-50 scale-150"></div>
+                <img
+                  src={`/rakhi${rakhiSeed}.png`}
+                  alt={`Selected Rakhi ${rakhiSeed}`}
+                  className="relative w-32 h-32 object-contain drop-shadow-2xl"
+                />
+                {/* Rakhi number indicator */}
+                <div className="absolute -bottom-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                  #{rakhiSeed}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Box top - slides up when revealed */}
-          <div className={`absolute bottom-16 left-1/2 -translate-x-1/2 transition-transform duration-700 ${reveal>=1?"translate-y-20":""}`}>
+          <div className={`absolute bottom-36 left-1/2 -translate-x-1/2 transition-all duration-1000 ease-out z-30 ${reveal>=1?"translate-y-20 rotate-12":""}`}>
             <img
               src="/box_top.png"
               alt="Box Top"
-              className="w-64 h-32 object-contain"
+              className="w-80 h-40 object-contain drop-shadow-lg"
             />
           </div>
 
-          {/* Selected rakhi rises */}
-          {reveal>=2 && (
-            <div className="absolute left-1/2 -translate-x-1/2 top-10 animate-pulse">
-              <img
-                src={`/rakhi${rakhiSeed}.png`}
-                alt={`Selected Rakhi ${rakhiSeed}`}
-                className="w-32 h-32 object-contain"
-              />
+          {/* Click instruction */}
+          {reveal < 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+              <p className="text-amber-700 text-sm animate-pulse">✨ Opening your surprise... ✨</p>
             </div>
           )}
         </div>
 
-        <p className="mt-6 text-lg text-amber-900/90 whitespace-pre-line">{msg}</p>
-
-        {upiLink ? (
-          <div className="mt-8 grid place-items-center">
-            <div className="rounded-2xl bg-white/80 border border-amber-200 shadow p-5">
-              <h3 className="font-semibold text-amber-900">Scan or Tap to Send Your Blessings</h3>
-              {qrUrl && (
-                <img alt="UPI QR" src={qrUrl} className="mt-4 w-40 h-40 mx-auto rounded-lg border" />
-              )}
-              <a href={upiLink} className="mt-4 inline-block rounded-xl px-4 py-2 bg-amber-600 text-white hover:bg-amber-700">Pay via UPI</a>
-              <p className="text-xs text-amber-800/70 mt-2">UPI ID: {upi}{am?` • Suggested ₹${am}`:""}</p>
+        {/* Sister's Message */}
+        {reveal >= 2 && (
+          <div className="mt-8 animate-fade-in">
+            <div className="bg-gradient-to-r from-orange-100 to-amber-100 rounded-2xl p-6 border border-orange-200 shadow-lg max-w-2xl mx-auto">
+              <h3 className="text-xl font-semibold text-red-900 mb-3">💌 Message from your Sister:</h3>
+              <p className="text-lg text-amber-900/90 whitespace-pre-line italic leading-relaxed">"{msg}"</p>
             </div>
           </div>
-        ) : (
-          <p className="mt-8 text-sm text-amber-700/70">No UPI details were attached.</p>
         )}
+
+        {/* UPI Payment Section */}
+        {upiLink && reveal >= 2 ? (
+          <div className="mt-8 animate-fade-in-delay">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200 shadow-lg max-w-md mx-auto">
+              <h3 className="text-xl font-semibold text-green-800 mb-4">🎁 Send Your Blessings</h3>
+              <p className="text-green-700 mb-4">Your sister is requesting your blessings!</p>
+
+              {qrUrl && (
+                <div className="mb-4">
+                  <img alt="UPI QR Code" src={qrUrl} className="w-48 h-48 mx-auto rounded-xl border-2 border-green-300 shadow-md" />
+                </div>
+              )}
+
+              <a
+                href={upiLink}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-lg"
+              >
+                💰 Pay ₹{am} via UPI
+              </a>
+
+              <p className="text-xs text-green-600 mt-3 text-center">
+                UPI ID: {upi}
+              </p>
+            </div>
+          </div>
+        ) : reveal >= 2 && (
+          <div className="mt-8">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200 shadow-lg max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-purple-800 mb-2">🙏 Blessings Received!</h3>
+              <p className="text-purple-700">Your sister sent this rakhi with pure love and blessings.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Add custom CSS for animations */}
+        <style>{`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.8s ease-out;
+          }
+          .animate-fade-in-delay {
+            animation: fade-in 0.8s ease-out 0.3s both;
+          }
+        `}</style>
       </div>
     </section>
   );
@@ -1064,15 +1153,36 @@ export default function DigitalBandhan() {
 
   const [route, setRoute] = useState("home");
   useEffect(() => {
-    if (view === "brother") setRoute("brotherView");
-    else if (view === "sister") setRoute("sisterView");
+    // Check if URL path is /happyrakhibhaiya
+    const currentPath = window.location.pathname;
+    console.log("Current path:", currentPath, "View param:", view);
+
+    if (currentPath === "/happyrakhibhaiya" || currentPath.endsWith("/happyrakhibhaiya")) {
+      console.log("Setting route to brotherView for custom path");
+      setRoute("brotherView");
+    } else if (view === "brother") {
+      console.log("Setting route to brotherView for view=brother");
+      setRoute("brotherView");
+    } else if (view === "sister") {
+      console.log("Setting route to sisterView");
+      setRoute("sisterView");
+    } else {
+      console.log("Staying on home route");
+    }
   }, [view]);
 
   // Update meta tags for WhatsApp preview when page loads
   useEffect(() => {
     const rakhiSeed = parseInt(qp.get("rakhi")) || 0;
     const message = qp.get("msg") || "";
-    updateMetaTags(rakhiSeed, message);
+
+    // Special meta tags for custom rakhi link
+    const currentPath = window.location.pathname;
+    if (currentPath === "/happyrakhibhaiya" || currentPath.endsWith("/happyrakhibhaiya")) {
+      updateMetaTags(rakhiSeed, message || "🎀 Your sister has sent you a beautiful digital rakhi! Open to see your surprise and her loving message. Happy Raksha Bandhan! 💖");
+    } else {
+      updateMetaTags(rakhiSeed, message);
+    }
   }, [qp]);
 
   function navigate(next) {
@@ -1083,11 +1193,16 @@ export default function DigitalBandhan() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  console.log("Rendering with route:", route, "URL:", window.location.href);
+
   return (
     <main className="font-[Inter,ui-sans-serif] text-red-900">
       <SparkleBg />
 
-
+      {/* Debug info */}
+      <div style={{position: 'fixed', top: 0, left: 0, background: 'black', color: 'white', padding: '5px', fontSize: '12px', zIndex: 9999}}>
+        Route: {route} | Path: {window.location.pathname}
+      </div>
 
       {route === "home" && <Landing onPick={navigate} />}
       {route === "sister" && <SisterFlow />}
