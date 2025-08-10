@@ -65,8 +65,14 @@ function onlyDigits(s = "") {
 }
 
 function makeWhatsAppLink(phone, text) {
-  const p = onlyDigits(phone);
-  return `https://wa.me/${p}?text=${encodeURIComponent(text)}`;
+  let p = onlyDigits(phone || "");
+  // Auto-add India country code if a 10-digit local number is provided
+  if (p.length === 10) p = `91${p}`;
+  const t = encodeURIComponent(text || "");
+  // If no valid phone, use share-only link
+  if (!p) return `https://wa.me/?text=${t}`;
+  // Use api.whatsapp.com with phone param (more reliable on some devices)
+  return `https://api.whatsapp.com/send?phone=${p}&text=${t}`;
 }
 
 function makeUPILink({ pa, pn = "", am = "", tn = "Rakhi Gift" }) {
@@ -226,42 +232,6 @@ function RakhiSVG({ seed = 0, size = 96 }) {
   );
 }
 
-// Function to convert SVG to downloadable image
-function svgToImage(svgElement, width = 300, height = 300) {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = width;
-    canvas.height = height;
-
-    // Create a white background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-
-    const svgData = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.onload = () => {
-      // Center the rakhi on canvas
-      const padding = 50;
-      const size = Math.min(width, height) - (padding * 2);
-      const x = (width - size) / 2;
-      const y = (height - size) / 2;
-
-      ctx.drawImage(img, x, y, size, size);
-      URL.revokeObjectURL(url);
-
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png', 0.9);
-    };
-    img.src = url;
-  });
-}
-
-
 function RakhiCarousel({ onPick }) {
   const items = useMemo(() => [1, 11, 12, 13, 14, 15, 16, 17], []);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -343,96 +313,6 @@ function RakhiCarousel({ onPick }) {
   );
 }
 
-
-// function RakhiCarousel({ onPick }) {
-//   const items = useMemo(() => [1, 11, 12, 13, 14, 15, 16, 17], []);
-//   const [currentIndex, setCurrentIndex] = useState(0);
-
-//   // Auto-rotation
-//   useEffect(() => {
-//     const interval = setInterval(() => {
-//       setCurrentIndex(prev => (prev + 1) % items.length);
-//     }, 3000);
-//     return () => clearInterval(interval);
-//   }, [items.length]);
-
-//   return (
-//     <div className="relative w-full py-8">
-//       <div className="relative h-80 lg:h-96 flex items-center justify-center overflow-hidden">
-
-//         {/* Show all items in a horizontal line */}
-//         <div className="flex items-center gap-8 lg:gap-12">
-//           {items.map((rakhi, index) => {
-//             const isCenter = index === currentIndex;
-//             const distance = Math.abs(index - currentIndex);
-//             const isVisible = distance <= 2;
-
-//             if (!isVisible) return null;
-
-//             return (
-//               <div
-//                 key={rakhi}
-//                 className="absolute"
-//                 style={{
-//                   transform: `translateX(${(index - currentIndex) * 180}px) scale(${isCenter ? 1 : 0.8})`,
-//                   opacity: isCenter ? 1 : 0.6,
-//                   filter: isCenter ? 'none' : 'blur(1px)',
-//                   zIndex: isCenter ? 20 : 10,
-//                   transition: 'all 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-//                   left: '50%',
-//                   top: '50%',
-//                   marginLeft: '-100px',
-//                   marginTop: '-120px'
-//                 }}
-//               >
-//                 <button
-//                   onClick={() => {
-//                     if (isCenter) {
-//                       onPick(rakhi);
-//                     } else {
-//                       setCurrentIndex(index);
-//                     }
-//                   }}
-//                   className={`relative bg-white/90 rounded-3xl shadow-xl border-2 backdrop-blur-xl transition-all duration-300 group ${
-//                     isCenter
-//                       ? 'border-amber-300 p-8 lg:p-12 hover:shadow-2xl hover:-translate-y-2'
-//                       : 'border-amber-200 p-4 lg:p-6 hover:scale-90'
-//                   }`}
-//                 >
-//                   {/* Background glow for center item */}
-//                   {isCenter && (
-//                     <div className="absolute inset-0 bg-gradient-to-r from-amber-200/30 via-orange-200/40 to-amber-200/30 rounded-3xl blur-xl -z-10"></div>
-//                   )}
-
-//                   <img
-//                     src={`/rakhi${rakhi}.png`}
-//                     alt={`Rakhi ${rakhi}`}
-//                     className={`object-contain group-hover:scale-105 transition-transform duration-300 ${
-//                       isCenter
-//                         ? 'w-48 h-48 lg:w-64 lg:h-64'
-//                         : 'w-32 h-32 lg:w-40 lg:h-40'
-//                     }`}
-//                     onError={(e) => {
-//                       console.log(`Failed to load: /rakhi${rakhi}.png`);
-//                       e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg==';
-//                     }}
-//                   />
-
-//                   {/* Rakhi number indicator */}
-//                   {isCenter && (
-//                     <div className="absolute top-4 right-4 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm font-medium">
-//                       {rakhi}
-//                     </div>
-//                   )}
-//                 </button>
-//               </div>
-//             );
-//           })}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
 
 function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
   const [phase, setPhase] = useState(0); // 0: waiting, 1: rakhi appears top, 2: rakhi drops slowly, 3: rakhi hides, 4: show final box
@@ -597,7 +477,9 @@ function Landing({ onPick }) {
 function SisterFlow() {
   const [picked, setPicked] = useState(null);
   const [packed, setPacked] = useState(false);
+  const [step, setStep] = useState(1); // 1: basic details, 2: shagun details
 
+  const [yourName, setYourName] = useState("");
   const [broPhone, setBroPhone] = useState("");
   const [upi, setUpi] = useState(""); // e.g., name@upi
   const [amount, setAmount] = useState(rupeeTiles[0]);
@@ -614,9 +496,9 @@ function SisterFlow() {
     if (upi) params.set("upi", upi);
     if (effectiveAmount) params.set("am", String(effectiveAmount));
 
-    // Use deployed URL instead of localhost
+    // Use deployed URL instead of localhost (updated to current working deployment)
     const baseUrl = window.location.hostname === 'localhost'
-      ? 'https://happyrakhi-kd76kybo4-arti-chaudharys-projects.vercel.app'
+      ? 'https://happyrakhi-8q4djxavk-arti-chaudharys-projects.vercel.app'
       : window.location.origin;
 
     const finalUrl = `${baseUrl}/happyrakhibhaiya?${params.toString()}`;
@@ -627,48 +509,6 @@ function SisterFlow() {
     return finalUrl;
   }
 
-  async function downloadRakhiImage() {
-    try {
-      // Use the selected rakhi image
-      const selectedRakhiUrl = `/rakhi${picked}.png`;
-
-      // Check if selected rakhi image exists, otherwise fall back to generated SVG
-      const response = await fetch(selectedRakhiUrl);
-      if (response.ok) {
-        // Download selected rakhi image
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `selected-rakhi-${picked}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        return;
-      }
-    } catch (error) {
-      console.log('Selected rakhi image not available, using generated SVG');
-    }
-
-    // Fallback to generated SVG
-    const svgElement = document.querySelector(`[data-rakhi-seed="${picked}"]`);
-    if (!svgElement) return;
-
-    try {
-      const blob = await svgToImage(svgElement, 400, 400);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rakhi-${picked + 1}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Failed to download rakhi image:', error);
-    }
-  }
 
   function handleSend() {
     // Check if phone number is provided
@@ -681,8 +521,9 @@ function SisterFlow() {
     const rakhiLink = buildRakhiViewLink();
     const upiLink = makeUPILink({ pa: upi, am: effectiveAmount, tn: "Rakhi Gift" });
 
-    const text = `Hey Bhai! I’m sending you this digital Rakhi. Open it here: ${rakhiLink}\n\nIf you’d like to send your blessings: ${upiLink}\nHappy Raksha Bandhan! 🎀`;
-    let finalText = `Hey Bhai! I'm sending you this digital Rakhi. Open it here: ${rakhiLink}`;
+    // Fancy + WhatsApp‑friendly: keep the link alone on its own line
+    let finalText = `Hey Bhai ❤️`;
+    finalText += `\n\n${rakhiLink}`;
 
     // Add custom message if provided
     if (msg.trim()) {
@@ -691,17 +532,11 @@ function SisterFlow() {
 
     // Add UPI payment request if provided
     if (upi && effectiveAmount) {
-      finalText += `\n\n🎁 If you'd like to send your blessings (₹${effectiveAmount}): ${upiLink}`;
+      finalText += `\n\n🎁 Send your blessings (₹${effectiveAmount})\n${upiLink}`;
     }
 
-    // Download rakhi image first
-    downloadRakhiImage().catch(error => {
-      console.log('Image download failed:', error);
-    });
-
-    finalText += `\n\n📷 *Beautiful rakhi image has been downloaded to your phone!*`;
-    finalText += `\nPlease attach the downloaded image to this WhatsApp chat.`;
-    finalText += `\n\n✨ *Happy Raksha Bandhan!* ✨`;
+    // Closing
+    finalText += `\n\n✨ Happy Raksha Bandhan! ✨`;
 
     // Create WhatsApp link and open immediately
     const whatsappUrl = makeWhatsAppLink(broPhone, finalText);
@@ -738,50 +573,191 @@ function SisterFlow() {
       </button>
 
       <div className="max-w-3xl mx-auto">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center px-2">Choose a Rakhi for Bhai ❤️</h2>
 
-        {!picked && (
-          <div className="mt-6">
-            <RakhiCarousel onPick={setPicked} />
-          </div>
+
+        {(picked === null || picked === undefined) && (
+          <>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center px-2">Choose a Rakhi for Bhai ❤️</h2>
+            <div className="mt-6">
+              <RakhiCarousel onPick={setPicked} />
+            </div>
+          </>
         )}
 
         {picked !== null && !packed && (
           <div className="mt-6 text-center">
             <div className="inline-block rounded-2xl bg-white px-3 sm:px-4 py-2 border border-orange-200 shadow-lg">
-              <p className="text-sm sm:text-base text-red-900/90">Nice pick! Packing your rakhi…</p>
+              <p className="text-lg sm:text-xl md:text-2xl font-semibold text-red-900/90">Nice pick! Packing your rakhi…</p>
             </div>
             <BoxPackAnimation rakhiSeed={picked} onDone={() => setPacked(true)} />
           </div>
         )}
 
         {packed && (
-          <div className="mt-8 sm:mt-10">
-            {/* Header */}
-            <div className="text-center mb-6">
-              <h2 className="text-lg text-gray-600 mb-4">Provide details for whom to send</h2>
+          <div className="min-h-screen bg-orange-50 pt-12">
+            {/* Gift Box Icon */}
+            <div className="flex justify-center mb-8 mt-12">
+              <div className="w-20 h-20">
+                <span className="text-7xl">🎁</span>
+              </div>
+            </div>
 
-              {/* Gift Box Icon */}
-              <div className="flex justify-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-orange-200 to-amber-300 rounded-2xl border-4 border-blue-400 flex items-center justify-center shadow-lg">
-                  <img
-                    src={`/rakhi${picked}.png`}
-                    alt={`Selected Rakhi ${picked}`}
-                    className="w-16 h-16 object-contain"
-                  />
-                </div>
+            {/* Header container with curved bottom */}
+            <div className="relative pb-4 mb-0" style={{background: 'linear-gradient(180deg, #FFF6E8 0%, #F8E9D2 100%)'}}>
+              <div className="text-center pt-8 pb-2">
+                <h3 className="text-3xl font-bold text-red-800">
+                  {step === 1 ? "Provide Few Details" : "Decide your Shagun"}
+                </h3>
               </div>
 
-              <h3 className="text-2xl font-bold text-red-900 mb-2">Provide Few Details</h3>
+              {/* Curved bottom for header - pronounced rounded curve */}
+              <div className="absolute bottom-0 left-0 right-0">
+                <svg className="w-full h-12" viewBox="0 0 400 48" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="headerToFormBlend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#F8E9D2" />
+                      <stop offset="100%" stopColor="#F9EBD6" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,0 C0,0 100,48 200,48 C300,48 400,0 400,0 L400,48 L0,48 Z" fill="url(#headerToFormBlend)" />
+                  <path d="M0,0 C0,0 100,48 200,48 C300,48 400,0 400,0" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+                </svg>
+              </div>
             </div>
 
-            {/* Form Container */}
-            <div className="bg-gradient-to-b from-orange-50 to-amber-50 rounded-3xl p-6 shadow-lg border border-orange-200">
-            <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
-              <label className="block text-sm text-red-900/80">Brother’s WhatsApp Number</label>
-              <input value={broPhone} onChange={(e)=>setBroPhone(e.target.value)} placeholder="e.g., +91 98XXXXXXXX" className="mt-2 w-full rounded-xl border border-orange-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-orange-400" />
-            </div>
+            {/* Form Container - adjusted so upper area is uniform to match sides of inputs */}
+            <div className="p-8 min-h-[55vh] -mt-4" style={{background: 'linear-gradient(180deg, #F9EBD6 0%, #F9EBD6 45%, #F2DCC9 60%, #ECC9C2 78%, #E9B1B6 100%)'}}>
 
+            {step === 1 && (
+              <>
+                {/* Your Name & Message Section */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-600 mb-2 text-left">Your Name & Message</h4>
+
+                  {/* Name Input */}
+                  <div className="mb-4">
+                    <input
+                      value={yourName}
+                      onChange={(e)=>setYourName(e.target.value)}
+                      placeholder="Write Your name"
+                      className="w-full rounded-2xl border border-white bg-white px-5 py-4 text-lg placeholder-red-300 outline-none shadow-sm"
+                    />
+                  </div>
+
+                  {/* Message Textarea */}
+                  <div className="relative">
+                    <textarea
+                      value={msg}
+                      onChange={(e)=>setMsg(e.target.value)}
+                      rows={4}
+                      placeholder="Write something sweet..."
+                      className="w-full rounded-2xl border border-white bg-white px-5 py-4 text-lg placeholder-red-300 outline-none shadow-sm resize-none"
+                    />
+                    <button
+                      onClick={()=>setMsg(aiMessages[Math.floor(Math.random()*aiMessages.length)])}
+                      className="absolute bottom-4 right-4 text-sm text-red-500 hover:text-red-600 flex items-center gap-1 font-medium"
+                    >
+                      <span>✨</span>
+                      <span>Write using AI</span>
+                    </button>
+                  </div>
+                </div>
+            {/* Brothers Whatsapp No. Field */}
+                <div className="mb-8">
+                <h4 className="text-lg font-semibold text-gray-600 mb-2 text-left">Brother’s WhatsApp Number</h4>   <input
+                    value={broPhone}
+                    onChange={(e)=>setBroPhone(e.target.value)}
+                    placeholder="98xxxxxx"
+                    className="w-full rounded-2xl border border-white bg-white px-5 py-4 text-lg placeholder-red-300 outline-none shadow-sm"
+                  />
+            </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                {/* Shagun Amount Selection */}
+                <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5 mb-4">
+                  <label className="block text-sm text-red-900/80 text-left mb-4">Shagun To Request <span className="text-gray-500">(Optional)</span></label>
+                  <div className="flex flex-wrap gap-3">
+                    {rupeeTiles.map(v => (
+                      <button
+                        key={v}
+                        onClick={()=>{ setAmount(v); setCustomAmount(""); }}
+                        className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                          amount===v && !customAmount
+                            ? "bg-red-600 text-white border-red-600 shadow-lg"
+                            : "border-orange-300 bg-white text-gray-700 hover:bg-orange-50"
+                        }`}
+                      >
+                        ₹{v}
+                      </button>
+                    ))}
+                    <button
+                      onClick={()=>{ setAmount(0); }}
+                      className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                        customAmount || amount === 0
+                          ? "bg-red-600 text-white border-red-600 shadow-lg"
+                          : "border-orange-300 bg-white text-gray-700 hover:bg-orange-50"
+                      }`}
+                    >
+                      Custom
+                    </button>
+                  </div>
+                  {(customAmount || amount === 0) && (
+                    <input
+                      value={customAmount}
+                      onChange={(e)=>setCustomAmount(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="Enter amount"
+                      className="mt-3 w-full rounded-xl border border-orange-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-400"
+                    />
+                  )}
+                </div>
+
+                {/* UPI ID Field */}
+                <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5 mb-4">
+                  <label className="block text-sm text-red-900/80 text-left">Your UPI ID <span className="text-gray-500">(To Recieve Gift)</span></label>
+                  <input
+                    value={upi}
+                    onChange={(e)=>setUpi(e.target.value)}
+                    placeholder="eg-xxxxxxxxx@ybl"
+                    className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${
+                      upi && !isValidUPI(upi)
+                        ? 'border-red-300 bg-red-50 focus:ring-red-400'
+                        : 'border-orange-300 bg-white focus:ring-orange-400'
+                    }`}
+                  />
+
+                  {/* UPI Validation Feedback */}
+                  {upi && !isValidUPI(upi) && (
+                    <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
+                      <span>❌</span>
+                      <span>Please enter a valid UPI ID (e.g., yourname@paytm)</span>
+                    </div>
+                  )}
+
+                  {upi && isValidUPI(upi) && (
+                    <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                      <span>✅</span>
+                      <span>Valid UPI ID - Payment link will be included</span>
+                    </div>
+                  )}
+
+                  {/* Show QR Code ONLY if UPI ID is valid and amount is provided */}
+                  {isValidUPI(upi) && effectiveAmount > 0 && (
+                    <div className="mt-4 flex justify-center">
+                      <UPIQRCode
+                        upiId={upi}
+                        amount={effectiveAmount}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* COMMENTED OUT - NOT IN REFERENCE DESIGN
             <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
               <label className="block text-sm text-red-900/80">Amount to request (optional)</label>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -791,18 +767,11 @@ function SisterFlow() {
                 <input value={customAmount} onChange={(e)=>setCustomAmount(e.target.value)} inputMode="numeric" placeholder="Custom" className="px-3 py-2 rounded-xl border border-orange-300 bg-white w-20 sm:w-28 text-sm sm:text-base" />
               </div>
             </div>
+            */}
 
-            <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <label className="block text-sm text-red-900/80">Message (optional)</label>
-                <button onClick={()=>setMsg(aiMessages[Math.floor(Math.random()*aiMessages.length)])} className="text-xs sm:text-sm underline text-red-700 self-start sm:ml-auto">✨ Generate</button>
-              </div>
-              <textarea value={msg} onChange={(e)=>setMsg(e.target.value)} rows={3} placeholder="Write something sweet…" className="mt-2 w-full rounded-xl border border-orange-300 bg-white px-3 py-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-orange-400" />
-            </div>
 
-            <div className="rounded-2xl bg-white border border-orange-200 shadow-lg p-4 sm:p-5">
-              <label className="block text-sm text-red-900/80">Your UPI ID (to receive the gift)</label>
-              <input
+
+              {/* <input
                 value={upi}
                 onChange={(e)=>setUpi(e.target.value)}
                 placeholder="e.g., yourname@paytm, user@phonepe"
@@ -814,9 +783,9 @@ function SisterFlow() {
               />
               {upi && (
                 <div className="mt-3 text-xs text-red-800/80">We’ll include a secure UPI payment link for Bhai to scan or tap.</div>
-              )}
+              )} */}
 
-              {/* UPI Validation Feedback */}
+              {/* UPI Validation Feedback
               {upi && !isValidUPI(upi) && (
                 <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
                   <span>❌</span>
@@ -832,37 +801,30 @@ function SisterFlow() {
               )}
 
               {/* Show QR Code ONLY if UPI ID is valid and amount is provided */}
-              {isValidUPI(upi) && effectiveAmount && (
+              {/* {isValidUPI(upi) && effectiveAmount && (
                 <div className="mt-4 flex justify-center">
                   <UPIQRCode
                     upiId={upi}
                     amount={effectiveAmount}
                   />
                 </div>
-              )}
-            </div>
-
+              )} */}
+            </div> 
+            
             {/* Step indicator and Next button */}
-            <div className="flex items-center justify-between mt-6">
-              <span className="text-red-600 font-medium">Step1/2</span>
+            <div className="flex items-center justify-between mt-8 px-2">
+              <span className="text-red-600 font-medium text-lg">Step{step}/2</span>
               <button
-                onClick={handleSend}
-                disabled={!broPhone}
-                className="bg-red-900 hover:bg-red-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 shadow-lg"
+                onClick={step === 1 ? () => setStep(2) : handleSend}
+                disabled={step === 1 ? (!yourName || !msg || !broPhone) : false}
+                className="bg-red-900 hover:bg-red-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-12 py-4 rounded-full font-semibold transition-all duration-300 shadow-lg text-lg"
               >
-                Next
+                {step === 1 ? "Next" : "Send Your Rakhi"}
               </button>
             </div>
 
-            <div className="text-xs text-red-700/60 text-center px-4 mt-3 space-y-1">
-              <p><strong>📱 How to Send Rakhi Image:</strong></p>
-              <p>1. Click button → Downloads rakhi image + opens WhatsApp</p>
-              <p>2. In WhatsApp: Click 📎 (attachment) → Photo → Select downloaded rakhi image</p>
-              <p>3. Add the pre-written message and send!</p>
-              <p className="text-green-600 font-medium mt-2">✅ Brother gets actual rakhi image + digital link!</p>
             </div>
-            </div>
-          </div>
+
         )}
       </div>
 
@@ -917,11 +879,10 @@ function BrotherFlow() {
       <div className="max-w-2xl mx-auto">
         {/* Header with gift box icon */}
         <div className="text-center mb-8">
-          <h2 className="text-lg text-gray-600 mb-4">Provide details for whom to send</h2>
 
           {/* Gift Box Icon */}
           <div className="flex justify-center mb-6">
-            <div className="w-24 h-24 bg-gradient-to-br from-orange-200 to-amber-300 rounded-2xl border-4 border-blue-400 flex items-center justify-center shadow-lg">
+            <div className="w-24 h-24 bg-gradient-to-br from-orange-200 to-amber-300 rounded-full border-4 border-blue-400 flex items-center justify-center shadow-lg">
               <div className="text-4xl">🎁</div>
             </div>
           </div>
@@ -1199,10 +1160,7 @@ export default function DigitalBandhan() {
     <main className="font-[Inter,ui-sans-serif] text-red-900">
       <SparkleBg />
 
-      {/* Debug info */}
-      <div style={{position: 'fixed', top: 0, left: 0, background: 'black', color: 'white', padding: '5px', fontSize: '12px', zIndex: 9999}}>
-        Route: {route} | Path: {window.location.pathname}
-      </div>
+
 
       {route === "home" && <Landing onPick={navigate} />}
       {route === "sister" && <SisterFlow />}
