@@ -343,7 +343,7 @@ function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
           <>
             {/* Rakhi - smooth top to bottom animation - STOPS EARLIER */}
             {phase < 3 && (
-              <div className={`absolute left-1/2 -translate-x-1/2 transition-all ease-in-out ${
+              <div className={`absolute left-1/2 transition-all ease-in-out ${
                 phase === 0 ? "opacity-0 duration-0" :
                 phase === 1 ? "opacity-100 duration-1000" :
                 phase === 2 ? "opacity-100 duration-2500" : ""
@@ -351,8 +351,8 @@ function BoxPackAnimation({ rakhiSeed = 0, onDone }) {
                 zIndex: 15,
                 top: phase === 0 ? '10%' :
                      phase === 1 ? '15%' :
-                     phase === 2 ? '45%' : '45%',
-                transform: `translateX(-50%) scale(${phase >= 2 ? '0.7' : '1'})`
+                     '50%',
+                transform: `${phase >= 2 ? 'translate(-50%, -50%)' : 'translate(-50%, 0)'} scale(${phase >= 2 ? '0.7' : '1'})`
               }}>
                 <div className={phase === 1 ? "animate-pulse" : ""}>
                   <img
@@ -809,8 +809,8 @@ function SisterFlow() {
                   />
                 </div>
               )} */}
-            </div> 
-            
+            </div>
+
             {/* Step indicator and Next button */}
             <div className="flex items-center justify-between mt-8 px-2">
               <span className="text-red-600 font-medium text-lg">Step{step}/2</span>
@@ -931,31 +931,87 @@ function BrotherFlow() {
 
 function BrotherReceivedView({ params }) {
   const rakhiSeed = Number(params.get("rakhi") || 0);
-  const msg = params.get("m") || "Happy Raksha Bandhan!";
+  const msg = params.get("m") || "";
+  const senderName = params.get("n") || "";
   const upi = params.get("upi") || "";
   const am = params.get("am") || "";
   const upiLink = upi ? makeUPILink({ pa: upi, am, tn: "Rakhi Gift" }) : null;
   const qrUrl = upiLink ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiLink)}` : null;
 
   const [reveal, setReveal] = useState(0);
+  const [boxClicked, setBoxClicked] = useState(false);
+  const [showCard, setShowCard] = useState(false);
+  const [showWearAnimation, setShowWearAnimation] = useState(false);
+  const [handVisible, setHandVisible] = useState(false);
+  const [rakhiVisible, setRakhiVisible] = useState(false);
+  const [rakhiOnWrist, setRakhiOnWrist] = useState(false);
+  const [showFinalWearScreen, setShowFinalWearScreen] = useState(false);
+  const handShouldShow = showWearAnimation || showFinalWearScreen;
+  const rakhiShouldBeOnWrist = rakhiOnWrist || showFinalWearScreen;
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
   useEffect(() => {
-    const t1 = setTimeout(() => setReveal(1), 600);
-    const t2 = setTimeout(() => setReveal(2), 1400);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
+
+
+
+  useEffect(() => {
+    if (boxClicked) {
+      const t1 = setTimeout(() => setReveal(1), 600);
+      const t2 = setTimeout(() => setReveal(2), 1400);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [boxClicked]);
+
+  // After rakhi is revealed (reveal=2), show the card after 2 seconds
+  useEffect(() => {
+    if (reveal >= 2) {
+      const t = setTimeout(() => setShowCard(true), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [reveal]);
+
+  // Map rakhiSeed to available image files in /public
+  const rakhiSrc = useMemo(() => {
+    const files = [1, 11, 12, 13, 14, 15, 16, 17];
+    const idx = Math.abs(((rakhiSeed || 1) - 1) % files.length);
+    return `/rakhi${files[idx]}.png`;
+  }, [rakhiSeed]);
 
   return (
     <section className="min-h-screen px-4 pt-8 pb-24 relative">
       <SparkleBg />
       <div className="max-w-3xl mx-auto text-center">
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-red-900 mb-2">🎀 Happy Raksha Bandhan! 🎀</h1>
-          <h2 className="text-2xl md:text-3xl font-semibold text-amber-900">Your Digital Rakhi 🎁</h2>
-          <p className="text-amber-800/80 mt-3 text-lg">A rakhi sent with love from your sister — open your surprise!</p>
-        </div>
+        {!boxClicked && (
+          <div className="mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-red-900 mb-2">🎀 Happy Raksha Bandhan! 🎀</h1>
+            <h2 className="text-2xl md:text-3xl font-semibold text-amber-900">Your Digital Rakhi 🎁</h2>
+            <p className="text-amber-800/80 mt-3 text-lg">A rakhi sent with love from your sister — open your surprise!</p>
+          </div>
+        )}
 
         {/* Box reveal with actual images */}
-        <div className="relative mt-8 h-[500px] flex items-center justify-center">
+        {!showCard && !showWearAnimation && (
+          <div className="relative mt-8 h-[500px] flex items-center justify-center">
+          {/* Initial closed box screen */}
+          {!boxClicked && (
+            <div className="flex flex-col items-center justify-center gap-3">
+              <img
+                src="/box.png"
+                alt="Closed Gift Box"
+                className="w-64 h-64 md:w-80 md:h-80 object-contain cursor-pointer drop-shadow-xl transition-transform hover:scale-105"
+                onClick={() => setBoxClicked(true)}
+              />
+              <p className="text-amber-800/80 text-sm md:text-base">Tap the box to open your surprise</p>
+            </div>
+          )}
+
+          {/* Reveal sequence content — only after click */}
+          {boxClicked && (
+            <>
+
           {/* Magical sparkles around the box */}
           {reveal >= 1 && (
             <div className="absolute inset-0 pointer-events-none">
@@ -974,39 +1030,34 @@ function BrotherReceivedView({ params }) {
             </div>
           )}
 
-          {/* Box bottom - always visible */}
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
+          {/* Box top - always visible at upper position */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30">
             <img
-              src="/box_bottom.png"
-              alt="Box Bottom"
+              src="/box_top.png"
+              alt="Box Top"
               className="w-80 h-40 object-contain drop-shadow-lg"
             />
           </div>
 
-          {/* Selected rakhi appears in the middle - between box parts */}
-          {reveal>=2 && (
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-32 animate-bounce z-20">
+          {/* Rakhi appears in the middle */}
+          {reveal>=1 && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
               <div className="relative">
-                {/* Glow effect behind rakhi */}
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-red-400 rounded-full blur-xl opacity-50 scale-150"></div>
                 <img
-                  src={`/rakhi${rakhiSeed}.png`}
+                  src={rakhiSrc}
                   alt={`Selected Rakhi ${rakhiSeed}`}
                   className="relative w-32 h-32 object-contain drop-shadow-2xl"
                 />
-                {/* Rakhi number indicator */}
-                <div className="absolute -bottom-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                  #{rakhiSeed}
-                </div>
               </div>
             </div>
           )}
 
-          {/* Box top - slides up when revealed */}
-          <div className={`absolute bottom-36 left-1/2 -translate-x-1/2 transition-all duration-1000 ease-out z-30 ${reveal>=1?"translate-y-20 rotate-12":""}`}>
+          {/* Box bottom - fixed at bottom position */}
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10">
             <img
-              src="/box_top.png"
-              alt="Box Top"
+              src="/box_bottom.png"
+              alt="Box Bottom"
               className="w-80 h-40 object-contain drop-shadow-lg"
             />
           </div>
@@ -1017,21 +1068,64 @@ function BrotherReceivedView({ params }) {
               <p className="text-amber-700 text-sm animate-pulse">✨ Opening your surprise... ✨</p>
             </div>
           )}
+          </>
+          )}
+
         </div>
+        )}
+
+        {showCard && (
+          <div className="mt-8 min-h-[500px] flex flex-col items-center justify-center text-center animate-fade-in">
+            <h3 className="text-2xl md:text-3xl font-bold text-amber-900 mb-4">Here is your rakhi</h3>
+            <div className="flex flex-col items-center justify-center gap-4">
+              <img src={rakhiSrc} alt="Your Rakhi" className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-2xl" />
+              <button onClick={() => {
+                // Start wear animation flow per spec: hand in, rakhi appears below, then moves up
+                setShowWearAnimation(true);
+                setShowCard(false);
+                setHandVisible(true);
+                setTimeout(() => setRakhiVisible(true), 400); // show rakhi below after hand settles a bit
+                setTimeout(() => setRakhiOnWrist(true), 1800); // move to wrist after ~1.8s
+                setTimeout(() => setShowFinalWearScreen(true), 2000); // show QR right after it settles
+              }} className="mt-2 inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2 rounded-full shadow">
+                Wear your rakhi
+              </button>
+            </div>
+
+
+          </div>
+        )}
 
         {/* Sister's Message */}
-        {reveal >= 2 && (
+        {!showCard && reveal >= 2 && !handShouldShow && (
           <div className="mt-8 animate-fade-in">
             <div className="bg-gradient-to-r from-orange-100 to-amber-100 rounded-2xl p-6 border border-orange-200 shadow-lg max-w-2xl mx-auto">
-              <h3 className="text-xl font-semibold text-red-900 mb-3">💌 Message from your Sister:</h3>
-              <p className="text-lg text-amber-900/90 whitespace-pre-line italic leading-relaxed">"{msg}"</p>
+              {senderName && (
+                <div className="text-amber-900 font-semibold text-base mb-1 text-center">From {senderName}</div>
+              )}
+              <div className="text-lg text-amber-900/90 whitespace-pre-line leading-relaxed text-center">{msg}</div>
             </div>
+          </div>
+        )}
+        {(handShouldShow) && (
+          <div className="relative mt-10 h-[520px] flex items-center justify-center">
+            <img
+              src="/hand.png"
+              alt="Brother Hand"
+              className={`absolute top-0 left-1/2 -translate-x-1/2 w-[300px] md:w-[380px] object-contain transition-transform duration-700 ease-out ${handVisible || showFinalWearScreen ? 'translate-y-20' : '-translate-y-48'}`}
+            />
+            <img
+              src={rakhiSrc}
+              alt="Rakhi"
+              className={`absolute w-24 h-24 md:w-28 md:h-28 object-contain drop-shadow-2xl transition-all duration-700 ease-in-out ${rakhiVisible || showFinalWearScreen ? 'opacity-100' : 'opacity-0'}`}
+              style={{ top: rakhiShouldBeOnWrist ? (isMobile ? '64%' : '70%') : '15%', left: isMobile ? '48%' : '48%', transform: `translate(-50%, -50%) ${rakhiShouldBeOnWrist ? (isMobile ? 'translate(0.75rem, 0)' : 'translate(1.25rem, 0)') : 'translate(0, 0)'}` }}
+            />
           </div>
         )}
 
         {/* UPI Payment Section */}
-        {upiLink && reveal >= 2 ? (
-          <div className="mt-8 animate-fade-in-delay">
+        {upiLink && reveal >= 2 && (!handShouldShow || showFinalWearScreen) && (
+          <div className="mt-8 animate-fade-in">
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200 shadow-lg max-w-md mx-auto">
               <h3 className="text-xl font-semibold text-green-800 mb-4">🎁 Send Your Blessings</h3>
               <p className="text-green-700 mb-4">Your sister is requesting your blessings!</p>
@@ -1052,13 +1146,6 @@ function BrotherReceivedView({ params }) {
               <p className="text-xs text-green-600 mt-3 text-center">
                 UPI ID: {upi}
               </p>
-            </div>
-          </div>
-        ) : reveal >= 2 && (
-          <div className="mt-8">
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200 shadow-lg max-w-md mx-auto">
-              <h3 className="text-lg font-semibold text-purple-800 mb-2">🙏 Blessings Received!</h3>
-              <p className="text-purple-700">Your sister sent this rakhi with pure love and blessings.</p>
             </div>
           </div>
         )}
